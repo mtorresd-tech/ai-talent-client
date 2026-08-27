@@ -6,6 +6,8 @@ import type {
   SincronizacionSfsf,
 } from '../../../shared/tipos/dominio';
 import type { EstadoIntegracion } from '../../integraciones';
+import type { OpcionesPeticion } from './vacantes';
+import { paramsSerializerEstado } from './serializacion';
 
 export interface CandidatoResumen {
   jobApplicationId: string;
@@ -116,15 +118,27 @@ export function listarCandidatosDeVacante(
   clienteApi: GebApiClient,
   jobRequisitionId: string,
   parametros: ParametrosListarCandidatos = {},
+  opciones: OpcionesPeticion = {},
 ) {
   return clienteApi.get<RespuestaPaginada<CandidatoResumen>>(
     `/vacantes/${jobRequisitionId}/candidatos`,
-    { params: parametros },
+    {
+      params: parametros,
+      // El contrato serializa `estado` como `?estado=A,B` (form, sin explode).
+      paramsSerializer: { serialize: paramsSerializerEstado },
+      signal: opciones.signal,
+    },
   );
 }
 
-export function obtenerCandidato(clienteApi: GebApiClient, jobApplicationId: string) {
-  return clienteApi.get<CandidatoDetalle>(`/candidatos/${jobApplicationId}`);
+export function obtenerCandidato(
+  clienteApi: GebApiClient,
+  jobApplicationId: string,
+  opciones: OpcionesPeticion = {},
+) {
+  return clienteApi.get<CandidatoDetalle>(`/candidatos/${jobApplicationId}`, {
+    signal: opciones.signal,
+  });
 }
 
 export function obtenerHistorial(clienteApi: GebApiClient, jobApplicationId: string) {
