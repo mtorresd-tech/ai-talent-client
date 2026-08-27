@@ -62,8 +62,9 @@ export function DevAuthProvider({ children }: { children: ReactNode }) {
   return (
     <DevAuthContext.Provider value={devValue}>
       {/* @geb/auth está buildeado contra @types/react 18; el `as any` evita el
-          choque de identidad de tipos con la 19 de este repo (ver riesgo
-          conocido en la skill geb-lib), no es un error real de tipos. */}
+          choque de identidad de tipos con la 19 de este repo — son dos
+          `ReactNode` estructuralmente distintos para TS, no un error real de
+          tipos. */}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       <GebAuthContext.Provider value={authValue}>{children as any}</GebAuthContext.Provider>
     </DevAuthContext.Provider>
