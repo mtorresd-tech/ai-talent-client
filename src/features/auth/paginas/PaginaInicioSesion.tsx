@@ -5,9 +5,8 @@ import { useDevAuth } from '../../../shared/auth/DevAuthContext';
 import { ROL_ADMINISTRADOR, ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
 
 /**
- * TODO: pantalla de login real (ver mockup en contexto de diseño) — @geb/ui
- * no tiene un componente de login predefinido, así que se construye con MUI
- * directo (ver skill geb-lib).
+ * TODO: pantalla de login real — @geb/ui no tiene un componente de login
+ * predefinido, así que se construye con MUI directo.
  */
 export function PaginaInicioSesion() {
   const { estado, login } = useAuth();
