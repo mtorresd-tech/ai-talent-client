@@ -1,6 +1,11 @@
 import type { GebApiClient } from '@geb/api-client';
 import type { Portal, RespuestaPaginada } from '../../../shared/tipos/dominio';
 
+/** Opciones de transporte comunes: permite cancelar la petición desde los hooks. */
+export interface OpcionesPeticion {
+  signal?: AbortSignal;
+}
+
 export interface VacanteResumen {
   jobRequisitionId: string;
   titulo: string;
@@ -52,12 +57,22 @@ export interface ParametrosListarVacantes {
 export function listarVacantes(
   clienteApi: GebApiClient,
   parametros: ParametrosListarVacantes = {},
+  opciones: OpcionesPeticion = {},
 ) {
-  return clienteApi.get<RespuestaPaginada<VacanteResumen>>('/vacantes', { params: parametros });
+  return clienteApi.get<RespuestaPaginada<VacanteResumen>>('/vacantes', {
+    params: parametros,
+    signal: opciones.signal,
+  });
 }
 
-export function obtenerVacante(clienteApi: GebApiClient, jobRequisitionId: string) {
-  return clienteApi.get<VacanteDetalle>(`/vacantes/${jobRequisitionId}`);
+export function obtenerVacante(
+  clienteApi: GebApiClient,
+  jobRequisitionId: string,
+  opciones: OpcionesPeticion = {},
+) {
+  return clienteApi.get<VacanteDetalle>(`/vacantes/${jobRequisitionId}`, {
+    signal: opciones.signal,
+  });
 }
 
 /** Si se omite `portal`, el backend lo deduce del rol del token. */
@@ -65,9 +80,11 @@ export function obtenerPipeline(
   clienteApi: GebApiClient,
   jobRequisitionId: string,
   portal?: Portal,
+  opciones: OpcionesPeticion = {},
 ) {
   return clienteApi.get<EtapaPipeline[]>(`/vacantes/${jobRequisitionId}/pipeline`, {
     params: portal ? { portal } : undefined,
+    signal: opciones.signal,
   });
 }
 
