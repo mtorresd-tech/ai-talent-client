@@ -11,8 +11,9 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
  * resuelve esos paquetes por archivo de origen y termina cargando DOS copias
  * de React — el árbol revienta al montar ("A React Element from an older
  * version of React was rendered"). Forzamos que todo resuelva contra las
- * copias de este repo. TODO: reevaluar si `geb-frontend-libs` sube sus
- * peers a las mismas versiones (ver riesgo conocido en la skill geb-lib).
+ * copias de este repo. TODO: reevaluar/quitar este alias si `geb-frontend-libs`
+ * sube sus peers (react/@mui/material/@emotion) a las mismas versiones que
+ * este repo.
  */
 const forzarCopiaLocal = [
   'react',
