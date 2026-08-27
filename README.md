@@ -28,14 +28,14 @@ Cosinte y Medilaboral.
   Los paquetes `@geb/*` se consumen como dependencia local (`link:`) apuntando
   a `../geb-frontend-libs/packages/<paquete>`, así que ese repo tiene que
   existir en esa ruta relativa y estar buildeado
-  (`pnpm build` dentro de `geb-frontend-libs`) antes de instalar acá. Esto es
+  (`pnpm build` dentro de `geb-frontend-libs`) antes de instalar aquí. Esto es
   temporal: cuando `@geb/*` se publique en un feed de paquetes, estas
   dependencias pasan a apuntar a una versión publicada en vez de a una ruta
   local.
 
 ## Configuración
 
-1. Copiá `.env.example` a `.env.local` y completá las variables (ver
+1. Copia `.env.example` a `.env.local` y completa las variables (ver
    [Variables de entorno](#variables-de-entorno)).
 2. `pnpm install`
 3. `pnpm dev`
@@ -61,7 +61,13 @@ Sirve para desarrollar y navegar la app mientras ese registro no exista.
 | `pnpm lint`         | ESLint sobre todo el proyecto.              |
 | `pnpm format`       | Formatea con Prettier.                      |
 | `pnpm format:check` | Verifica formato sin escribir cambios.      |
+| `pnpm test`         | Corre la suite de pruebas (Vitest) una vez. |
+| `pnpm test:watch`   | Vitest en modo watch.                       |
 | `pnpm preview`      | Sirve el build de producción localmente.    |
+
+Las pruebas usan Vitest + Testing Library + jsdom. `vitest.config.ts` replica el
+`alias`/`dedupe` de React, `@mui/material` y `@emotion` de la config de build
+para no cargar dos copias de React en el entorno de pruebas.
 
 ## Estructura del proyecto
 
@@ -80,7 +86,7 @@ src/
 
 Los features no se importan entre sí (excepto `procesos`, que consume tipos
 de `integraciones`); lo reutilizable entre proyectos GEB se propone como
-paquete `@geb/*`, no como código duplicado acá.
+paquete `@geb/*`, no como código duplicado en este repo.
 
 ## Convenciones
 
@@ -92,5 +98,15 @@ paquete `@geb/*`, no como código duplicado acá.
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/)
   en español (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`,
   `style:`), un commit por archivo.
-- **Antes de abrir un PR**: `pnpm lint && pnpm format:check && pnpm build`
+- **Antes de abrir un PR**: `pnpm lint && pnpm format:check && pnpm build && pnpm test`
   en verde.
+
+## Documentación de funcionalidades
+
+En `docs/` se documenta cada funcionalidad ya implementada:
+
+- [`docs/p-02-vista-general-procesos.md`](docs/p-02-vista-general-procesos.md) —
+  vista general de Procesos del reclutador: tabla de vacantes, detalle, pipeline
+  dinámico, ranking de candidatos por afinidad y envío a prefiltro telefónico.
+- [`docs/pendientes-backend.md`](docs/pendientes-backend.md) — confirmaciones y
+  cambios pendientes del servicio de orquestación.
