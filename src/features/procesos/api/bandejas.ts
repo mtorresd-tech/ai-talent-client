@@ -102,6 +102,10 @@ export function registrarDecision(
   clienteApi: GebApiClient,
   jobApplicationId: string,
   datos: DecisionRequest,
+  opciones: { idempotencyKey?: string; signal?: AbortSignal } = {},
 ) {
-  return clienteApi.post<DecisionResultado>(`/candidatos/${jobApplicationId}/decisiones`, datos);
+  return clienteApi.post<DecisionResultado>(`/candidatos/${jobApplicationId}/decisiones`, datos, {
+    signal: opciones.signal,
+    headers: opciones.idempotencyKey ? { 'Idempotency-Key': opciones.idempotencyKey } : undefined,
+  });
 }
