@@ -98,3 +98,24 @@ export interface RespuestaPaginada<T> {
   data: T[];
   meta: PaginacionMeta;
 }
+
+/**
+ * Estado de la proyección hacia SFSF. IA Talento confirma de inmediato; la
+ * escritura en SFSF la hace el consumidor de `sb-queue-ssff-sync` de forma
+ * asíncrona (normalmente segundos) — el front pinta el estado nuevo sin
+ * esperar a que este campo pase a SINCRONIZADO.
+ */
+export interface SincronizacionSfsf {
+  estado: 'SINCRONIZADO' | 'PENDIENTE' | 'FALLIDA';
+  ultimaSincronizacion: string | null;
+  intentos: number;
+  /** Presente solo si `estado` es FALLIDA. */
+  ultimoError: string | null;
+}
+
+export interface ActorDecision {
+  tipo: 'HUMANO' | 'SISTEMA';
+  /** Presente solo si `tipo` es HUMANO. */
+  upn: string | null;
+  rol: string | null;
+}
