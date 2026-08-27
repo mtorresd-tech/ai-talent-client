@@ -1,73 +1,96 @@
-# React + TypeScript + Vite
+# IA Talento — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend de IA Talento (Grupo Energía Bogotá): dos portales — **Reclutador**
+(gestiona vacantes, candidatos y el pipeline de selección) y **Líder**
+(evalúa informes incógnitos y califica entrevistas). Consume un backend de
+orquestación propio que a su vez integra SAP SuccessFactors, Bluesite,
+Cosinte y Medilaboral.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- [React 19](https://react.dev) + [TypeScript](https://www.typescriptlang.org) + [Vite](https://vite.dev)
+- [Material UI](https://mui.com) como base de componentes
+- [`@geb/*`](#librería-geb) — design system y utilidades transversales de GEB (UI, cliente HTTP, autenticación, formularios)
+- [React Router](https://reactrouter.com)
+- [pnpm](https://pnpm.io) como gestor de paquetes
 
-## React Compiler
+## Requisitos previos
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node 18.18 o superior (desarrollado y probado con Node 24).
+- pnpm 10.
+- El repo **`geb-frontend-libs`** clonado como hermano de este repo (mismo
+  directorio padre), es decir:
+  ```
+  <directorio-padre>/
+  ├── SELECTA Frontend/     (este repo)
+  └── geb-frontend-libs/
+  ```
+  Los paquetes `@geb/*` se consumen como dependencia local (`link:`) apuntando
+  a `../geb-frontend-libs/packages/<paquete>`, así que ese repo tiene que
+  existir en esa ruta relativa y estar buildeado
+  (`pnpm build` dentro de `geb-frontend-libs`) antes de instalar acá. Esto es
+  temporal: cuando `@geb/*` se publique en un feed de paquetes, estas
+  dependencias pasan a apuntar a una versión publicada en vez de a una ruta
+  local.
 
-## Expanding the ESLint configuration
+## Configuración
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Copiá `.env.example` a `.env.local` y completá las variables (ver
+   [Variables de entorno](#variables-de-entorno)).
+2. `pnpm install`
+3. `pnpm dev`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Variables de entorno
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Variable                                                                                          | Para qué                                                      |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `VITE_API_BASE_URL`                                                                               | URL base del backend de orquestación de IA Talento.           |
+| `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` / `VITE_ENTRA_REDIRECT_URI` / `VITE_ENTRA_SCOPES` | Registro de la app en Microsoft Entra ID, para el login real. |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+Mientras `VITE_ENTRA_CLIENT_ID`/`VITE_ENTRA_TENANT_ID` estén vacíos (no hay
+app registration todavía), la app arranca con un **login simulado en
+memoria**: cualquier correo/contraseña entra, sin validar contra Entra ID.
+Sirve para desarrollar y navegar la app mientras ese registro no exista.
+
+## Scripts disponibles
+
+| Script              | Qué hace                                    |
+| ------------------- | ------------------------------------------- |
+| `pnpm dev`          | Levanta el servidor de desarrollo.          |
+| `pnpm build`        | Typecheck (`tsc -b`) + build de producción. |
+| `pnpm lint`         | ESLint sobre todo el proyecto.              |
+| `pnpm format`       | Formatea con Prettier.                      |
+| `pnpm format:check` | Verifica formato sin escribir cambios.      |
+| `pnpm preview`      | Sirve el build de producción localmente.    |
+
+## Estructura del proyecto
+
+```
+src/
+├── app/            # shell: providers (theme + auth), layout, router
+├── features/       # un directorio por módulo de negocio
+│   ├── auth/           # login
+│   ├── procesos/       # vacantes, candidatos, pipeline, decisiones — ambos portales
+│   ├── integraciones/  # estado por proveedor: bluesite/, cosinte/, medilaboral/, ssff/
+│   ├── metricas/        # portal reclutador (placeholder)
+│   ├── notificaciones/  # ambos portales (placeholder)
+│   └── configuracion/   # políticas de compuertas, rol administrador
+└── shared/         # tipos de dominio y cliente HTTP compartidos — sin lógica de negocio
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Los features no se importan entre sí (excepto `procesos`, que consume tipos
+de `integraciones`); lo reutilizable entre proyectos GEB se propone como
+paquete `@geb/*`, no como código duplicado acá.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
+## Convenciones
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+- **Idioma**: componentes, funciones, tipos y variables en español; carpetas
+  y paquetes en inglés.
+- **Ramas**: nunca se trabaja directo sobre `main`, `dev` o `qa`. Cada cambio
+  va en `[prefijo]/id/nombre-apellido/nombre-funcionalidad`, con
+  `prefijo` ∈ `feature | bugfix | hotfix | test | wip`.
+- **Commits**: [Conventional Commits](https://www.conventionalcommits.org/)
+  en español (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`,
+  `style:`), un commit por archivo.
+- **Antes de abrir un PR**: `pnpm lint && pnpm format:check && pnpm build`
+  en verde.
