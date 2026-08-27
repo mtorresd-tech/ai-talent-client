@@ -5,14 +5,15 @@ import { useAuth } from '@geb/auth';
 import { ROL_ADMINISTRADOR, ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
 
 /**
- * Navegación de ambos portales en un solo árbol: `GebAppLayout` filtra cada
- * entrada por `roles` contra el usuario autenticado.
+ * Navegación real de ambos portales: Reclutador ve Procesos/Métricas/
+ * Notificaciones; Líder ve Procesos/Notificaciones. "Procesos" es una sola
+ * entrada compartida — la pantalla que renderiza depende del rol (ver
+ * features/procesos/paginas/PaginaProcesos.tsx).
  */
 const navegacion: GebNavItem[] = [
-  { etiqueta: 'Vacantes', ruta: '/vacantes', roles: [ROL_RECLUTADOR] },
-  { etiqueta: 'Bandeja de aprobaciones', ruta: '/bandejas/RANKING', roles: [ROL_RECLUTADOR] },
-  { etiqueta: 'Informes incógnitos', ruta: '/lider/informes', roles: [ROL_LIDER] },
-  { etiqueta: 'Historial', ruta: '/lider/historial', roles: [ROL_LIDER] },
+  { etiqueta: 'Procesos', ruta: '/procesos', roles: [ROL_RECLUTADOR, ROL_LIDER] },
+  { etiqueta: 'Métricas', ruta: '/metricas', roles: [ROL_RECLUTADOR] },
+  { etiqueta: 'Notificaciones', ruta: '/notificaciones', roles: [ROL_RECLUTADOR, ROL_LIDER] },
   { etiqueta: 'Configuración', ruta: '/configuracion', roles: [ROL_ADMINISTRADOR] },
 ];
 
@@ -36,8 +37,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
     >
       {/* @geb/ui está buildeado contra @types/react 18; el `as any` evita el
           choque de identidad de tipos con la 19 de este repo — son dos
-          `ReactNode` estructuralmente distintos para TS (ver riesgo conocido
-          en la skill geb-lib), no un error real de tipos. */}
+          `ReactNode` estructuralmente distintos para TS, no un error real de
+          tipos. */}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {children as any}
     </GebAppLayout>
