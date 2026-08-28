@@ -60,7 +60,7 @@ describe('useCandidatosEtapa', () => {
           }),
       )
       .mockResolvedValueOnce({
-        data: [{ jobApplicationId: 'nuevo' }],
+        data: [{ jobApplicationId: 'nuevo', estado: 'RANKING_SELECTA' }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       });
 
@@ -79,10 +79,34 @@ describe('useCandidatosEtapa', () => {
 
     rerender({ pagina: 1 });
     resolverPrimera({
-      data: [{ jobApplicationId: 'viejo' }],
+      data: [{ jobApplicationId: 'viejo', estado: 'RANKING_SELECTA' }],
       meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
     });
 
     await waitFor(() => expect(result.current.datos?.data[0]?.jobApplicationId).toBe('nuevo'));
+  });
+
+  it('filtra en el cliente los candidatos de otros estados (el backend real no filtra por estado)', async () => {
+    const cliente = crearClienteApiFalso();
+    cliente.get.mockResolvedValue({
+      data: [
+        { jobApplicationId: 'a', estado: 'RANKING_SELECTA' },
+        { jobApplicationId: 'b', estado: 'PREFILTRO_PENDIENTE' },
+        { jobApplicationId: 'c', estado: 'EXTRACCION_OCR' },
+      ],
+      meta: { page: 1, pageSize: 20, total: 3, totalPages: 1 },
+    });
+
+    const { result } = renderHook(() =>
+      useCandidatosEtapa(cliente, {
+        jobRequisitionId: 'v1',
+        etapaClave: CLAVE_ETAPA_RANKING,
+        pagina: 0,
+        tamanoPagina: 20,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.datos).not.toBeNull());
+    expect(result.current.datos?.data.map((c) => c.jobApplicationId)).toEqual(['a']);
   });
 });
