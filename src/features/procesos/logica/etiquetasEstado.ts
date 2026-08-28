@@ -40,3 +40,20 @@ export function etiquetaEstado(estado: string | null | undefined): string {
   if (!estado) return 'Sin estado';
   return ETIQUETAS[estado as EstadoProceso] ?? aTitleCase(estado);
 }
+
+/** Colores de `Chip` de MUI para los estados que conviven en un mismo paso. */
+export type ColorChipEstado = 'default' | 'warning' | 'info' | 'success';
+
+const COLORES: Partial<Record<EstadoProceso, ColorChipEstado>> = {
+  // Listado de filtrados: pendiente/completado siguen en curso; preseleccionado
+  // ya terminó el prefiltro y queda listo para el informe incógnito.
+  PREFILTRO_PENDIENTE: 'warning',
+  PREFILTRO_COMPLETADO: 'info',
+  PRESELECCIONADO: 'success',
+};
+
+/** Color de chip para un estado; `default` para cualquiera sin color asignado. */
+export function colorEstado(estado: string | null | undefined): ColorChipEstado {
+  if (!estado) return 'default';
+  return COLORES[estado as EstadoProceso] ?? 'default';
+}
