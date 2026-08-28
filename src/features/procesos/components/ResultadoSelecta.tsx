@@ -79,6 +79,15 @@ export function ResultadoSelecta({
 
   const desglose = candidato.desgloseAfinidad;
 
+  if (!desglose) {
+    return (
+      <GebEmptyState
+        titulo="Sin resultado de afinidad"
+        descripcion="Este candidato todavía no tiene un desglose de afinidad calculado."
+      />
+    );
+  }
+
   return (
     <Box
       sx={{
