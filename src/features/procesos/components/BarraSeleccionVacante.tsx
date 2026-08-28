@@ -10,9 +10,8 @@ export interface BarraSeleccionVacanteProps {
 
 /**
  * Toolbar sobre el área de trabajo: muestra la vacante activa y un botón
- * "Filtrar" que en esta entrega es un stub deshabilitado (los filtros
- * avanzados llegan más adelante). La búsqueda por texto sí funciona, desde el
- * buscador de la tabla.
+ * "Filtrar" deshabilitado. La búsqueda por texto funciona desde el buscador de
+ * la tabla.
  */
 export function BarraSeleccionVacante({ nombreVacante }: BarraSeleccionVacanteProps) {
   return (
@@ -21,11 +20,17 @@ export function BarraSeleccionVacante({ nombreVacante }: BarraSeleccionVacantePr
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 2,
+        flexWrap: 'wrap',
+        gap: 1,
         py: 1,
       }}
     >
-      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+      <Typography
+        variant="subtitle1"
+        noWrap
+        sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}
+        title={nombreVacante ?? undefined}
+      >
         {nombreVacante ?? 'Selecciona una vacante'}
       </Typography>
       <Tooltip title="Disponible próximamente">
