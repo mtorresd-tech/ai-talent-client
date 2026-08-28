@@ -1,127 +1,233 @@
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import type { ApiError } from '@geb/api-client';
-import type { EtapaPipeline } from '../api/vacantes';
-import { EstadoError } from './EstadoError';
+import CheckIcon from '@mui/icons-material/Check';
+import { FASES_SAP, PASOS_PIPELINE } from '../logica/pipelineReclutador';
 
 export interface RailPipelineProps {
-  pipeline: EtapaPipeline[] | null;
-  cargando: boolean;
-  error: ApiError | null;
-  etapaActivaClave: string | null;
-  onSeleccionarEtapa: (etapa: EtapaPipeline) => void;
-  onReintentar: () => void;
+  /** Clave del paso interno activo. */
+  pasoActivo: string | null;
+  onSeleccionarPaso: (clave: string) => void;
 }
 
-const DESPLAZAMIENTO_PX = 240;
+const DESPLAZAMIENTO_PX = 320;
 
 /**
- * Rail horizontal del pipeline dinámico: una ficha por etapa (ordenadas por
- * `orden`), navegable con flechas que se deshabilitan en los extremos. La
- * etapa activa se resalta. Cambiar de etapa no cambia de ruta.
+ * Rail del pipeline con dos niveles: fases de referencia de SuccessFactors en
+ * tarjetas, con los pasos internos de IA Talento anidados como pills
+ * navegables. Las fases sin soporte en IA Talento muestran solo una nota. El
+ * rail se desplaza en horizontal con flechas.
  */
-export function RailPipeline({
-  pipeline,
-  cargando,
-  error,
-  etapaActivaClave,
-  onSeleccionarEtapa,
-  onReintentar,
-}: RailPipelineProps) {
-  const contenedorRef = useRef<HTMLDivElement>(null);
+export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProps) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [puedeIzquierda, setPuedeIzquierda] = useState(false);
+  const [puedeDerecha, setPuedeDerecha] = useState(false);
 
-  if (error) {
-    return <EstadoError error={error} onReintentar={onReintentar} />;
-  }
+  const actualizarFlechas = useCallback(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    setPuedeIzquierda(rail.scrollLeft > 2);
+    setPuedeDerecha(rail.scrollLeft < rail.scrollWidth - rail.clientWidth - 2);
+  }, []);
 
-  if (cargando && !pipeline) {
-    return (
-      <Typography variant="body2" sx={{ color: 'text.secondary', py: 2 }}>
-        Cargando pipeline…
-      </Typography>
-    );
-  }
-
-  const etapas = [...(pipeline ?? [])].sort((a, b) => a.orden - b.orden);
-  if (etapas.length === 0) return null;
-
-  const indiceActivo = etapas.findIndex((etapa) => etapa.clave === etapaActivaClave);
-  const enPrimera = indiceActivo <= 0;
-  const enUltima = indiceActivo === -1 || indiceActivo >= etapas.length - 1;
+  useEffect(() => {
+    actualizarFlechas();
+    window.addEventListener('resize', actualizarFlechas);
+    return () => window.removeEventListener('resize', actualizarFlechas);
+  }, [actualizarFlechas]);
 
   const desplazar = (direccion: -1 | 1) => {
-    contenedorRef.current?.scrollBy?.({
-      left: direccion * DESPLAZAMIENTO_PX,
-      behavior: 'smooth',
-    });
+    railRef.current?.scrollBy?.({ left: direccion * DESPLAZAMIENTO_PX, behavior: 'smooth' });
   };
 
+  const indiceActivo = PASOS_PIPELINE.findIndex((paso) => paso.clave === pasoActivo);
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 0.5 }}>
       <IconButton
-        aria-label="Etapa anterior"
+        aria-label="Fases anteriores"
         size="small"
-        disabled={enPrimera}
+        disabled={!puedeIzquierda}
         onClick={() => desplazar(-1)}
+        sx={{ alignSelf: 'center' }}
       >
         <ChevronLeftIcon />
       </IconButton>
 
       <Box
-        ref={contenedorRef}
+        ref={railRef}
+        onScroll={actualizarFlechas}
         sx={{
           display: 'flex',
-          gap: 1.5,
+          gap: 1.25,
           overflowX: 'auto',
           flex: 1,
+          minWidth: 0,
           py: 1,
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
         }}
       >
-        {etapas.map((etapa) => {
-          const activa = etapa.clave === etapaActivaClave;
+        {FASES_SAP.map((fase, indice) => {
+          const indicesPasos = fase.pasos.map((clave) =>
+            PASOS_PIPELINE.findIndex((paso) => paso.clave === clave),
+          );
+          const contieneActivo = fase.pasos.includes(pasoActivo ?? '');
+          const faseCompleta =
+            indiceActivo >= 0 &&
+            indicesPasos.length > 0 &&
+            indicesPasos.every((i) => i >= 0 && i < indiceActivo);
+
           return (
             <Box
-              key={etapa.clave}
-              component="button"
-              type="button"
-              aria-pressed={activa}
-              onClick={() => onSeleccionarEtapa(etapa)}
+              key={fase.clave}
               sx={{
-                flexShrink: 0,
-                minWidth: 150,
-                textAlign: 'left',
-                cursor: 'pointer',
+                flex: '1 0 auto',
+                minWidth: { xs: 132, sm: 150 },
+                maxWidth: 190,
+                display: 'flex',
+                flexDirection: 'column',
                 borderRadius: 2,
-                border: '1px solid',
-                borderColor: activa ? 'primary.main' : 'divider',
-                bgcolor: activa ? 'primary.main' : 'background.paper',
-                color: activa ? 'primary.contrastText' : 'text.primary',
-                px: 1.5,
-                py: 1,
+                border: '1.5px solid',
+                borderStyle: fase.externa ? 'dashed' : 'solid',
+                borderColor: contieneActivo ? 'primary.main' : 'divider',
+                bgcolor: fase.externa ? 'transparent' : 'background.paper',
+                boxShadow: contieneActivo ? 3 : 0,
+                p: 1,
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                {etapa.nombre}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                {etapa.total} candidato{etapa.total === 1 ? '' : 's'}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, mb: 1 }}>
+                <Box
+                  sx={{
+                    flexShrink: 0,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    border: '1.5px solid',
+                    borderColor: faseCompleta
+                      ? 'success.main'
+                      : contieneActivo
+                        ? 'primary.main'
+                        : 'divider',
+                    bgcolor: faseCompleta
+                      ? 'success.main'
+                      : contieneActivo
+                        ? 'primary.main'
+                        : 'background.default',
+                    color:
+                      faseCompleta || contieneActivo ? 'primary.contrastText' : 'text.secondary',
+                  }}
+                >
+                  {faseCompleta ? <CheckIcon sx={{ fontSize: 13 }} /> : indice + 1}
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    lineHeight: 1.2,
+                    color: fase.externa ? 'text.secondary' : 'text.primary',
+                  }}
+                >
+                  {fase.nombre}
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  justifyContent: 'flex-end',
+                }}
+              >
+                {fase.pasos.length === 0 ? (
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.disabled', fontStyle: 'italic', lineHeight: 1.3 }}
+                  >
+                    {fase.nota ?? '—'}
+                  </Typography>
+                ) : (
+                  fase.pasos.map((clave) => {
+                    const paso = PASOS_PIPELINE.find((p) => p.clave === clave);
+                    if (!paso) return null;
+                    const activo = paso.clave === pasoActivo;
+                    const indicePaso = PASOS_PIPELINE.findIndex((p) => p.clave === clave);
+                    const completado =
+                      indiceActivo >= 0 && indicePaso >= 0 && indicePaso < indiceActivo;
+                    return (
+                      <Box
+                        key={paso.clave}
+                        component="button"
+                        type="button"
+                        aria-pressed={activo}
+                        onClick={() => onSeleccionarPaso(paso.clave)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          width: '100%',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          borderRadius: 1.5,
+                          border: '1px solid',
+                          borderColor: activo
+                            ? 'primary.main'
+                            : completado
+                              ? 'success.light'
+                              : 'divider',
+                          bgcolor: activo
+                            ? 'primary.main'
+                            : completado
+                              ? 'success.light'
+                              : 'background.default',
+                          color: activo
+                            ? 'primary.contrastText'
+                            : completado
+                              ? 'success.dark'
+                              : 'text.secondary',
+                          px: 0.75,
+                          py: 0.5,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            bgcolor: 'currentColor',
+                          }}
+                        />
+                        {paso.nombre}
+                      </Box>
+                    );
+                  })
+                )}
+              </Box>
             </Box>
           );
         })}
       </Box>
 
       <IconButton
-        aria-label="Etapa siguiente"
+        aria-label="Fases siguientes"
         size="small"
-        disabled={enUltima}
+        disabled={!puedeDerecha}
         onClick={() => desplazar(1)}
+        sx={{ alignSelf: 'center' }}
       >
         <ChevronRightIcon />
       </IconButton>
