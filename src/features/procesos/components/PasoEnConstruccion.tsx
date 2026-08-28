@@ -6,9 +6,9 @@ export interface PasoEnConstruccionProps {
 }
 
 /**
- * Placeholder navegable para las etapas del pipeline que aún no operan
- * (Anonimizar, Bluesite, Cosinte, Medilaboral, Oferta) y para el sub-paso
- * "Lista de filtrados". No carga datos ni expone acciones.
+ * Placeholder navegable para los pasos del pipeline que aún no operan
+ * (Anonimización, Bluesite, Cosinte, Medilaboral, Oferta). No carga datos ni
+ * expone acciones.
  */
 export function PasoEnConstruccion({ nombre }: PasoEnConstruccionProps) {
   return (

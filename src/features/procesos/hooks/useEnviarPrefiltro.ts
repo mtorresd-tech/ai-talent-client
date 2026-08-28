@@ -41,9 +41,9 @@ function nuevaClaveIdempotencia(): string {
 }
 
 /**
- * No existe un endpoint de decisión masiva: se hacen N `POST` secuenciales y se
- * consolida el resultado (éxitos y fallos con motivo + id de correlación). Al
- * terminar, el consumidor recarga la lista de la etapa.
+ * Envía cada candidato en un `POST` secuencial y consolida el resultado
+ * (éxitos y fallos con motivo + id de correlación). Al terminar, el consumidor
+ * recarga la lista de la etapa.
  */
 export function useEnviarPrefiltro(clienteApi: GebApiClient): EnvioPrefiltro {
   const [enviando, setEnviando] = useState(false);

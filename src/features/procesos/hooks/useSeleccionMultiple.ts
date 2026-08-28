@@ -11,11 +11,7 @@ export interface SeleccionMultiple {
   limpiar: () => void;
 }
 
-/**
- * Selección múltiple por checkbox sobre la lista de ranking. Vive fuera de
- * `GebDataTable` porque la tabla del design system no expone selección de
- * filas.
- */
+/** Selección múltiple por checkbox sobre la lista de ranking, gestionada fuera de `GebDataTable`. */
 export function useSeleccionMultiple(): SeleccionMultiple {
   const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(() => new Set());
 

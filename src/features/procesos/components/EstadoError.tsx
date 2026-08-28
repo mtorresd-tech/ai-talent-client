@@ -9,8 +9,7 @@ export interface EstadoErrorProps {
 /**
  * Adapta un `ApiError` de `@geb/api-client` a las props del `GebErrorState`
  * del design system: título del Problem Details, detalle e id de correlación
- * para soporte. El design system aún no consume `ApiError` directamente, así
- * que el mapeo se hace aquí en un solo lugar.
+ * para soporte.
  */
 export function EstadoError({ error, onReintentar }: EstadoErrorProps) {
   return (

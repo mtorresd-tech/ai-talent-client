@@ -99,14 +99,4 @@ paquete `@geb/*`, no como código duplicado en este repo.
   en español (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`,
   `style:`), un commit por archivo.
 - **Antes de abrir un PR**: `pnpm lint && pnpm format:check && pnpm build && pnpm test`
-  en verde.
-
-## Documentación de funcionalidades
-
-En `docs/` se documenta cada funcionalidad ya implementada:
-
-- [`docs/p-02-vista-general-procesos.md`](docs/p-02-vista-general-procesos.md) —
-  vista general de Procesos del reclutador: tabla de vacantes, detalle, pipeline
-  dinámico, ranking de candidatos por afinidad y envío a prefiltro telefónico.
-- [`docs/pendientes-backend.md`](docs/pendientes-backend.md) — confirmaciones y
-  cambios pendientes del servicio de orquestación.
+  en verde
