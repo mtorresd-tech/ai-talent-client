@@ -28,9 +28,8 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: string }) {
 }
 
 /**
- * Card oscura on-brand con el detalle de la vacante seleccionada. El contrato
- * no expone "líder de área", así que ese campo del mockup se omite. Los nulos
- * se muestran como "Sin definir" / "No disponible".
+ * Card oscura on-brand con el detalle de la vacante seleccionada. Los nulos se
+ * muestran como "Sin definir" / "No disponible".
  */
 export function TarjetaDetalleVacante({
   detalle,
@@ -56,7 +55,10 @@ export function TarjetaDetalleVacante({
     return (
       <>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 700, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+          >
             {detalle.titulo}
           </Typography>
           <Chip
@@ -91,7 +93,7 @@ export function TarjetaDetalleVacante({
         position: 'relative',
         overflow: 'hidden',
         borderRadius: '14px',
-        p: 3,
+        p: { xs: 2, sm: 3 },
         color: '#fff',
         background: 'linear-gradient(135deg, #0b1a33, #16305c)',
       }}
