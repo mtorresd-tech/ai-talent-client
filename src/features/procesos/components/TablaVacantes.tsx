@@ -18,6 +18,8 @@ export interface TablaVacantesProps {
   /** Página base 0. */
   pagina: number;
   tamanoPagina: number;
+  /** `jobRequisitionId` de la vacante activa; resalta su fila. */
+  vacanteSeleccionadaId: string | null;
   onCambioPagina: (pagina: number, tamanoPagina: number) => void;
   onBuscar: (texto: string) => void;
   onSeleccionar: (vacante: VacanteResumen) => void;
@@ -39,6 +41,7 @@ export function TablaVacantes({
   error,
   pagina,
   tamanoPagina,
+  vacanteSeleccionadaId,
   onCambioPagina,
   onBuscar,
   onSeleccionar,
@@ -60,16 +63,27 @@ export function TablaVacantes({
     {
       campo: 'titulo',
       titulo: 'Vacante',
-      render: (fila: VacanteResumen) => (
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {fila.titulo}
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {[fila.area, fila.ciudad].filter(Boolean).join(' · ') || 'Sin definir'}
-          </Typography>
-        </Box>
-      ),
+      render: (fila: VacanteResumen) => {
+        const seleccionada = fila.jobRequisitionId === vacanteSeleccionadaId;
+        return (
+          <Box>
+            {/* Marcador invisible para resaltar la fila con el selector `:has()`. */}
+            {seleccionada && <span data-fila-seleccionada hidden />}
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: seleccionada ? 700 : 600,
+                color: seleccionada ? 'primary.main' : 'text.primary',
+              }}
+            >
+              {fila.titulo}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {[fila.area, fila.ciudad].filter(Boolean).join(' · ') || 'Sin definir'}
+            </Typography>
+          </Box>
+        );
+      },
     },
     {
       campo: 'cerrada',
@@ -89,26 +103,40 @@ export function TablaVacantes({
   ]);
 
   return (
-    <GebDataTable<VacanteResumen>
-      columnas={columnas}
-      filas={respuesta?.data ?? []}
-      obtenerId={(fila) => fila.jobRequisitionId}
-      cargando={cargando}
-      filtro={texto}
-      onCambioFiltro={setTexto}
-      onClickFila={onSeleccionar}
-      paginacion={{
-        pagina,
-        tamanoPagina,
-        totalFilas: respuesta?.meta.total ?? 0,
-        onCambioPagina,
+    <Box
+      sx={{
+        '& tbody tr:has([data-fila-seleccionada])': {
+          bgcolor: 'action.selected',
+        },
+        '& tbody tr:has([data-fila-seleccionada]) td:first-of-type': {
+          boxShadow: (theme) => `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+        },
+        // La paginación no encoge sola en pantallas angostas; se envuelve en
+        // vez de forzar scroll horizontal.
+        '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', rowGap: 0.25 },
       }}
-      estadoVacio={
-        <GebEmptyState
-          titulo="No tienes vacantes asignadas"
-          descripcion="Cuando se te asigne una vacante aparecerá en esta lista."
-        />
-      }
-    />
+    >
+      <GebDataTable<VacanteResumen>
+        columnas={columnas}
+        filas={respuesta?.data ?? []}
+        obtenerId={(fila) => fila.jobRequisitionId}
+        cargando={cargando}
+        filtro={texto}
+        onCambioFiltro={setTexto}
+        onClickFila={onSeleccionar}
+        paginacion={{
+          pagina,
+          tamanoPagina,
+          totalFilas: respuesta?.meta.total ?? 0,
+          onCambioPagina,
+        }}
+        estadoVacio={
+          <GebEmptyState
+            titulo="No tienes vacantes asignadas"
+            descripcion="Cuando se te asigne una vacante aparecerá en esta lista."
+          />
+        }
+      />
+    </Box>
   );
 }
