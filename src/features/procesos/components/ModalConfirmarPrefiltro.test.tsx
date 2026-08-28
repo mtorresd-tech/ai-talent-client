@@ -53,11 +53,11 @@ describe('ModalConfirmarPrefiltro', () => {
     expect(onConfirmar).not.toHaveBeenCalled();
   });
 
-  it('"Confirmar" dispara el envío', async () => {
+  it('el botón de confirmar dispara el envío y anuncia la ida a SuccessFactors', async () => {
     const onConfirmar = vi.fn();
     render(<ModalConfirmarPrefiltro {...base} onConfirmar={onConfirmar} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await userEvent.click(screen.getByRole('button', { name: /Confirmar e ir a SuccessFactors/ }));
     expect(onConfirmar).toHaveBeenCalledTimes(1);
   });
 
@@ -81,7 +81,7 @@ describe('ModalConfirmarPrefiltro', () => {
 
     expect(screen.getByText(/3 enviados, 1 con error/)).toBeInTheDocument();
     expect(screen.getByText('Ya fue decidida')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Confirmar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Confirmar/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument();
   });
 });
