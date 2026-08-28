@@ -43,33 +43,14 @@ const detalleVacante = {
   tipoEstudioCosinte: null,
 };
 
-const pipeline = [
-  {
-    clave: 'RANKING',
-    nombre: 'Selecta',
-    orden: 1,
-    total: 3,
-    pendientesDecision: 2,
-    automatica: false,
-  },
-  {
-    clave: 'BLUESITE',
-    nombre: 'Bluesite',
-    orden: 2,
-    total: 0,
-    pendientesDecision: 0,
-    automatica: false,
-  },
-];
-
-function candidato(id: string, nombre: string, ranking: number) {
+function candidato(id: string, nombre: string, ranking: number, estado = 'RANKING_SELECTA') {
   return {
     jobApplicationId: id,
     jobRequisitionId: 'REQ-1',
     alias: `Candidato ${ranking}`,
     nombre,
     numeroDocumento: null,
-    estado: 'RANKING_SELECTA',
+    estado,
     estadoDesde: '2026-01-12',
     estadoSfsf: null,
     fechaPostulacion: '2026-01-11',
@@ -82,8 +63,23 @@ function candidato(id: string, nombre: string, ranking: number) {
 }
 
 const listaCandidatos = {
-  data: [candidato('APP-1', 'Ana Pérez', 1), candidato('APP-2', 'Beto Ruiz', 2)],
-  meta: { page: 1, pageSize: 20, total: 2, totalPages: 1 },
+  data: [
+    candidato('APP-2', 'Beto Ruiz', 2),
+    candidato('APP-1', 'Ana Pérez', 1),
+    candidato('APP-3', 'Dario Fuera', 3, 'PREFILTRO_PENDIENTE'),
+  ],
+  meta: { page: 1, pageSize: 5, total: 3, totalPages: 1 },
+};
+
+const listaFiltrados = {
+  // El backend real no filtra por `estado`: la respuesta trae candidatos de
+  // otros pasos del pipeline mezclados. `useCandidatosEtapa` debe filtrarlos.
+  data: [
+    candidato('APP-9', 'Caro Díaz', 5, 'PREFILTRO_PENDIENTE'),
+    candidato('APP-10', 'Ese No Va', 6, 'RANKING_SELECTA'),
+    candidato('APP-11', 'Tampoco Este', 7, 'EXTRACCION_OCR'),
+  ],
+  meta: { page: 1, pageSize: 10, total: 3, totalPages: 1 },
 };
 
 const detalleCandidato = {
@@ -113,23 +109,26 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-  cliente.get.mockImplementation((url: string) => {
+  cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
     if (url === '/vacantes') {
       return Promise.resolve({
         data: [vacante],
-        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+        meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
       });
     }
     if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
-    if (url === '/vacantes/REQ-1/pipeline') return Promise.resolve(pipeline);
-    if (url === '/vacantes/REQ-1/candidatos') return Promise.resolve(listaCandidatos);
+    if (url === '/vacantes/REQ-1/candidatos') {
+      const estados = config?.params?.estado ?? [];
+      if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
+      return Promise.resolve(listaCandidatos);
+    }
     if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
     return Promise.reject(new Error(`URL no mockeada: ${url}`));
   });
 });
 
 describe('PaginaProcesosReclutador', () => {
-  it('selecciona una vacante y carga detalle, pipeline y candidatos de ranking', async () => {
+  it('selecciona una vacante, arma el pipeline local y carga candidatos de ranking', async () => {
     const usuario = userEvent.setup();
     render(<PaginaProcesosReclutador />);
 
@@ -138,8 +137,11 @@ describe('PaginaProcesosReclutador', () => {
 
     await waitFor(() => {
       expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-1', expect.anything());
-      expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-1/pipeline', expect.anything());
     });
+
+    // El pipeline no se pide al backend: se arma en el frontend (rail con fases).
+    expect(cliente.get).not.toHaveBeenCalledWith('/vacantes/REQ-1/pipeline', expect.anything());
+    expect(await screen.findByText('Prefiltro telefónico')).toBeInTheDocument();
 
     await waitFor(() => {
       const llamada = cliente.get.mock.calls.find((c) => c[0] === '/vacantes/REQ-1/candidatos');
@@ -148,6 +150,53 @@ describe('PaginaProcesosReclutador', () => {
 
     expect(await screen.findByText('Ana Pérez')).toBeInTheDocument();
     expect(screen.getByText('Karen Rincón')).toBeInTheDocument();
+
+    // Selecta solo muestra los de estado RANKING_SELECTA, por afinidad desc.
+    expect(screen.queryByText('Dario Fuera')).not.toBeInTheDocument();
+    const nombres = screen.getAllByText(/Pérez|Ruiz/).map((n) => n.textContent);
+    expect(nombres).toEqual(['Ana Pérez', 'Beto Ruiz']);
+  });
+
+  it('el listado de filtrados carga los candidatos en prefiltro / preseleccionados', async () => {
+    const usuario = userEvent.setup();
+    render(<PaginaProcesosReclutador />);
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+
+    await usuario.click(screen.getByRole('button', { name: /Listado de filtrados/ }));
+
+    await waitFor(() => {
+      const llamada = cliente.get.mock.calls
+        .filter((c) => c[0] === '/vacantes/REQ-1/candidatos')
+        .at(-1);
+      expect(llamada?.[1].params.estado).toEqual([
+        'PREFILTRO_PENDIENTE',
+        'PREFILTRO_COMPLETADO',
+        'PRESELECCIONADO',
+      ]);
+    });
+    expect(await screen.findByText('Caro Díaz')).toBeInTheDocument();
+    // Estado visible por fila: distingue pendiente / completado / preseleccionado.
+    expect(screen.getByText('Prefiltro pendiente')).toBeInTheDocument();
+    // El backend real no filtra por estado: candidatos de otros pasos
+    // (ranking, extracción OCR) deben quedar afuera de este listado.
+    expect(screen.queryByText('Ese No Va')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tampoco Este')).not.toBeInTheDocument();
+  });
+
+  it('los pasos sin soporte muestran el placeholder "en construcción"', async () => {
+    const usuario = userEvent.setup();
+    render(<PaginaProcesosReclutador />);
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+
+    await usuario.click(screen.getByRole('button', { name: /Bluesite/ }));
+
+    expect(await screen.findByText(/construcción/i)).toBeInTheDocument();
   });
 
   it('al seleccionar un candidato consulta su detalle y muestra el desglose de afinidad', async () => {
@@ -185,7 +234,9 @@ describe('PaginaProcesosReclutador', () => {
     await usuario.click(screen.getByRole('button', { name: 'Prefiltro telefónico' }));
 
     const dialogo = await screen.findByRole('dialog');
-    await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
+    await usuario.click(
+      within(dialogo).getByRole('button', { name: /Confirmar e ir a SuccessFactors/ }),
+    );
 
     await waitFor(() => expect(cliente.post).toHaveBeenCalledTimes(2));
     expect(await within(dialogo).findByText(/1 enviado, 1 con error/)).toBeInTheDocument();
