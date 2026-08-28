@@ -42,7 +42,8 @@ export interface DesgloseAfinidad {
 }
 
 export interface CandidatoDetalle extends CandidatoResumen {
-  desgloseAfinidad: DesgloseAfinidad;
+  /** `null` si el candidato todavía no tiene afinidad calculada contra la vacante. */
+  desgloseAfinidad: DesgloseAfinidad | null;
   integraciones: EstadoIntegracion[];
   identidadRevelada: boolean;
   sincronizacionSfsf: SincronizacionSfsf;
