@@ -17,9 +17,9 @@ export interface ParametrosCandidatosEtapa {
 
 /**
  * Candidatos de la etapa activa (`GET /vacantes/{id}/candidatos`), ordenados
- * por `scoreAfinidad` descendente. El filtro se arma traduciendo la clave de la
- * etapa a estados (`ESTADOS_POR_ETAPA`). Si la etapa no es operativa (sin
- * estados mapeados) el hook queda deshabilitado y no llama al backend.
+ * por `scoreAfinidad` descendente y filtrados a los estados de esa etapa
+ * (`ESTADOS_POR_ETAPA`). Si la etapa no es operativa (sin estados mapeados) el
+ * hook queda deshabilitado y no llama al backend.
  */
 export function useCandidatosEtapa(
   clienteApi: GebApiClient,
@@ -30,21 +30,27 @@ export function useCandidatosEtapa(
   const claveEstados = estados.join(',');
 
   const ejecutor = useCallback(
-    (signal: AbortSignal) =>
-      listarCandidatosDeVacante(
+    async (signal: AbortSignal) => {
+      const estadosEtapa = claveEstados
+        ? (claveEstados.split(',') as CandidatoResumen['estado'][])
+        : [];
+      const respuesta = await listarCandidatosDeVacante(
         clienteApi,
         jobRequisitionId as string,
         {
           page: aPaginaServidor(pagina),
           pageSize: tamanoPagina,
-          estado: claveEstados
-            ? (claveEstados.split(',') as CandidatoResumen['estado'][])
-            : undefined,
+          estado: estadosEtapa.length > 0 ? estadosEtapa : undefined,
           ordenarPor: 'scoreAfinidad',
           direccion: 'desc',
         },
         { signal },
-      ),
+      );
+      return {
+        ...respuesta,
+        data: respuesta.data.filter((candidato) => estadosEtapa.includes(candidato.estado)),
+      };
+    },
     [clienteApi, jobRequisitionId, claveEstados, pagina, tamanoPagina],
   );
 
