@@ -7,18 +7,17 @@ import type { VacanteResumen } from '../api/vacantes';
 import type { CandidatoResumen } from '../api/candidatos';
 import { useVacantes } from '../hooks/useVacantes';
 import { useDetalleVacante } from '../hooks/useDetalleVacante';
-import { usePipeline } from '../hooks/usePipeline';
 import { useCandidatosEtapa } from '../hooks/useCandidatosEtapa';
 import { useDetalleCandidato } from '../hooks/useDetalleCandidato';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
-import { esEtapaOperativa, resolverEtapaOperativa } from '../logica/mapaEstadosPorEtapa';
-import { subpasosDeEtapa } from '../logica/subpasosPorEtapa';
+import { esEtapaOperativa, esPasoSelecta } from '../logica/mapaEstadosPorEtapa';
+import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
+import { abrirSuccessFactors } from '../logica/successFactors';
 import { TablaVacantes } from '../components/TablaVacantes';
 import { BarraSeleccionVacante } from '../components/BarraSeleccionVacante';
 import { TarjetaDetalleVacante } from '../components/TarjetaDetalleVacante';
 import { RailPipeline } from '../components/RailPipeline';
-import { SubnavPasosEtapa } from '../components/SubnavPasosEtapa';
 import { LayoutPasoPipeline } from '../components/LayoutPasoPipeline';
 import { ListaRankingCandidatos } from '../components/ListaRankingCandidatos';
 import { BarraAccionPrefiltro } from '../components/BarraAccionPrefiltro';
@@ -26,61 +25,56 @@ import { ModalConfirmarPrefiltro } from '../components/ModalConfirmarPrefiltro';
 import { ResultadoSelecta } from '../components/ResultadoSelecta';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
-const TAMANO_PAGINA = 20;
+/** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
+const TAMANO_PAGINA_INICIAL = 5;
 
 /**
  * Pantalla "Procesos" del reclutador: tabla de vacantes → detalle de la
- * vacante → rail del pipeline dinámico → layout de dos columnas con la etapa
- * de ranking operativa (lista de candidatos por afinidad + resultado Selecta) y
- * la acción de prefiltro telefónico. Las demás etapas son navegables pero
- * muestran un placeholder. El estado (vacante → etapa → sub-paso → candidato)
- * vive en el componente; cambiar de etapa o de candidato no cambia de ruta.
+ * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
+ * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
+ * resultado Selecta) y la acción de prefiltro telefónico. El listado de
+ * filtrados también es operativo; los demás pasos son navegables con un
+ * placeholder. El estado (vacante → paso → candidato) vive en el componente;
+ * cambiar de paso o de candidato no cambia de ruta.
  */
 export function PaginaProcesosReclutador() {
   const clienteApi = useClienteApi();
 
   const [busqueda, setBusqueda] = useState('');
   const [paginaVacantes, setPaginaVacantes] = useState(0);
+  const [tamanoPaginaVacantes, setTamanoPaginaVacantes] = useState(TAMANO_PAGINA_INICIAL);
   const [vacanteId, setVacanteId] = useState<string | null>(null);
-  // Etapa elegida explícitamente por el reclutador; si es `null` se usa la
-  // etapa operativa que resuelve el pipeline (se deriva, sin efectos).
-  const [etapaClaveManual, setEtapaClaveManual] = useState<string | null>(null);
-  const [subPaso, setSubPaso] = useState<string | null>(null);
+  // Paso elegido explícitamente por el reclutador; `null` → el paso inicial.
+  const [pasoClaveManual, setPasoClaveManual] = useState<string | null>(null);
   const [paginaCandidatos, setPaginaCandidatos] = useState(0);
+  const [tamanoPaginaCandidatos, setTamanoPaginaCandidatos] = useState(TAMANO_PAGINA_INICIAL);
   const [candidatoId, setCandidatoId] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
 
   const vacantes = useVacantes(clienteApi, {
     pagina: paginaVacantes,
-    tamanoPagina: TAMANO_PAGINA,
+    tamanoPagina: tamanoPaginaVacantes,
     busqueda,
   });
   const detalleVacante = useDetalleVacante(clienteApi, vacanteId);
-  const pipeline = usePipeline(clienteApi, vacanteId);
 
   const seleccion = useSeleccionMultiple();
   const envio = useEnviarPrefiltro(clienteApi);
 
-  const etapaClave = useMemo(() => {
-    if (etapaClaveManual && pipeline.datos?.some((etapa) => etapa.clave === etapaClaveManual)) {
-      return etapaClaveManual;
-    }
-    return resolverEtapaOperativa(pipeline.datos)?.clave ?? null;
-  }, [etapaClaveManual, pipeline.datos]);
+  const pasoClave = pasoClaveManual ?? PASO_INICIAL;
 
   const candidatos = useCandidatosEtapa(clienteApi, {
     jobRequisitionId: vacanteId,
-    etapaClave,
+    etapaClave: pasoClave,
     pagina: paginaCandidatos,
-    tamanoPagina: TAMANO_PAGINA,
+    tamanoPagina: tamanoPaginaCandidatos,
   });
   const detalleCandidato = useDetalleCandidato(clienteApi, candidatoId);
 
   const seleccionarVacante = useCallback(
     (vacante: VacanteResumen) => {
       setVacanteId(vacante.jobRequisitionId);
-      setEtapaClaveManual(null);
-      setSubPaso(null);
+      setPasoClaveManual(null);
       setCandidatoId(null);
       setPaginaCandidatos(0);
       seleccion.limpiar();
@@ -88,10 +82,9 @@ export function PaginaProcesosReclutador() {
     [seleccion],
   );
 
-  const seleccionarEtapa = useCallback(
+  const seleccionarPaso = useCallback(
     (clave: string) => {
-      setEtapaClaveManual(clave);
-      setSubPaso(null);
+      setPasoClaveManual(clave);
       setCandidatoId(null);
       setPaginaCandidatos(0);
       seleccion.limpiar();
@@ -104,12 +97,18 @@ export function PaginaProcesosReclutador() {
     setPaginaVacantes(0);
   }, []);
 
-  const subpasos = subpasosDeEtapa(etapaClave);
-  const subPasoActivo = subPaso ?? subpasos[0]?.clave ?? null;
-  const subPasoActual = subpasos.find((paso) => paso.clave === subPasoActivo) ?? null;
-  const etapaOperativa = esEtapaOperativa(etapaClave);
-  const mostrarRanking =
-    etapaOperativa && (subpasos.length === 0 || (subPasoActual?.operativo ?? false));
+  const cambioPaginaVacantes = useCallback((pagina: number, tamano: number) => {
+    setPaginaVacantes(pagina);
+    setTamanoPaginaVacantes(tamano);
+  }, []);
+
+  const cambioPaginaCandidatos = useCallback((pagina: number, tamano: number) => {
+    setPaginaCandidatos(pagina);
+    setTamanoPaginaCandidatos(tamano);
+  }, []);
+
+  const operativa = esEtapaOperativa(pasoClave);
+  const esSelecta = esPasoSelecta(pasoClave);
 
   const candidatosPagina: CandidatoResumen[] = useMemo(
     () => candidatos.datos?.data ?? [],
@@ -121,9 +120,10 @@ export function PaginaProcesosReclutador() {
   );
 
   const confirmarPrefiltro = useCallback(async () => {
-    await envio.enviar(seleccion.ids);
+    const resultado = await envio.enviar(seleccion.ids);
     seleccion.limpiar();
     candidatos.recargar();
+    if (resultado.exitosos.length > 0) abrirSuccessFactors();
   }, [envio, seleccion, candidatos]);
 
   const cerrarModal = useCallback(() => {
@@ -137,34 +137,37 @@ export function PaginaProcesosReclutador() {
     if (!vacanteId) {
       return <GebEmptyState titulo="Selecciona una vacante para ver su pipeline" />;
     }
-    if (mostrarRanking) {
-      return (
-        <Box>
+    if (!operativa) {
+      return <PasoEnConstruccion nombre={nombrePaso(pasoClave) ?? undefined} />;
+    }
+    return (
+      <Box>
+        {esSelecta && (
           <BarraAccionPrefiltro
             cantidadSeleccionados={seleccion.cantidad}
             onAbrirConfirmacion={() => setModalAbierto(true)}
             onLimpiar={seleccion.limpiar}
           />
-          <ListaRankingCandidatos
-            respuesta={candidatos.datos}
-            cargando={candidatos.cargando}
-            error={candidatos.error}
-            pagina={paginaCandidatos}
-            tamanoPagina={TAMANO_PAGINA}
-            estaSeleccionado={seleccion.estaSeleccionado}
-            onAlternarSeleccion={seleccion.alternar}
-            onCambioPagina={(p) => setPaginaCandidatos(p)}
-            onClickCandidato={(candidato) => setCandidatoId(candidato.jobApplicationId)}
-            onReintentar={candidatos.recargar}
-          />
-        </Box>
-      );
-    }
-    return <PasoEnConstruccion nombre={subPasoActual?.nombre ?? undefined} />;
+        )}
+        <ListaRankingCandidatos
+          respuesta={candidatos.datos}
+          cargando={candidatos.cargando}
+          error={candidatos.error}
+          pagina={paginaCandidatos}
+          tamanoPagina={tamanoPaginaCandidatos}
+          variante={esSelecta ? 'selecta' : 'simple'}
+          estaSeleccionado={seleccion.estaSeleccionado}
+          onAlternarSeleccion={seleccion.alternar}
+          onCambioPagina={cambioPaginaCandidatos}
+          onClickCandidato={(candidato) => setCandidatoId(candidato.jobApplicationId)}
+          onReintentar={candidatos.recargar}
+        />
+      </Box>
+    );
   };
 
   const columnaDerecha = () => {
-    if (!mostrarRanking) {
+    if (!operativa) {
       return <GebEmptyState titulo="Sin información para este paso" />;
     }
     return (
@@ -178,14 +181,15 @@ export function PaginaProcesosReclutador() {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={{ xs: 1.5, sm: 2 }}>
       <TablaVacantes
         respuesta={vacantes.datos}
         cargando={vacantes.cargando}
         error={vacantes.error}
         pagina={paginaVacantes}
-        tamanoPagina={TAMANO_PAGINA}
-        onCambioPagina={(p) => setPaginaVacantes(p)}
+        tamanoPagina={tamanoPaginaVacantes}
+        vacanteSeleccionadaId={vacanteId}
+        onCambioPagina={cambioPaginaVacantes}
         onBuscar={buscarVacantes}
         onSeleccionar={seleccionarVacante}
         onReintentar={vacantes.recargar}
@@ -200,19 +204,7 @@ export function PaginaProcesosReclutador() {
             error={detalleVacante.error}
             onReintentar={detalleVacante.recargar}
           />
-          <RailPipeline
-            pipeline={pipeline.datos}
-            cargando={pipeline.cargando}
-            error={pipeline.error}
-            etapaActivaClave={etapaClave}
-            onSeleccionarEtapa={(etapa) => seleccionarEtapa(etapa.clave)}
-            onReintentar={pipeline.recargar}
-          />
-          <SubnavPasosEtapa
-            etapaClave={etapaClave}
-            subPasoActivo={subPasoActivo}
-            onSeleccionarSubPaso={setSubPaso}
-          />
+          <RailPipeline pasoActivo={pasoClave} onSeleccionarPaso={seleccionarPaso} />
           <LayoutPasoPipeline izquierda={columnaIzquierda()} derecha={columnaDerecha()} />
         </>
       )}
