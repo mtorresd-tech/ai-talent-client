@@ -15,9 +15,18 @@ export {
   ESTADOS_POR_ETAPA,
   estadosDeEtapa,
   esEtapaOperativa,
-  resolverEtapaOperativa,
+  esPasoSelecta,
 } from './logica/mapaEstadosPorEtapa';
-export { SUBPASOS_POR_ETAPA, subpasosDeEtapa, type SubPasoEtapa } from './logica/subpasosPorEtapa';
+// Pipeline del reclutador: fases SAP y pasos internos.
+export {
+  PASOS_PIPELINE,
+  FASES_SAP,
+  PASO_INICIAL,
+  nombrePaso,
+  type PasoPipeline,
+  type FaseSap,
+} from './logica/pipelineReclutador';
+export { URL_SUCCESSFACTORS, abrirSuccessFactors } from './logica/successFactors';
 export { ETIQUETA_ESTADO_PROCESO, etiquetaEstado } from './logica/etiquetasEstado';
 export { formatearFecha, SIN_FECHA } from './logica/formatoFecha';
 export { aPaginaServidor, aPaginaTabla } from './logica/paginacion';
@@ -26,12 +35,13 @@ export { resumenEtapaVacante, etiquetaEstadoVacante } from './logica/resumenEtap
 // Componentes reutilizables por los pasos siguientes del pipeline.
 export { LayoutPasoPipeline, type LayoutPasoPipelineProps } from './components/LayoutPasoPipeline';
 export { PasoEnConstruccion } from './components/PasoEnConstruccion';
+export { IndicadorAfinidad } from './components/IndicadorAfinidad';
+export { colorAfinidad } from './logica/afinidad';
 
 // Hooks de datos y de interacción.
 export { usePeticion, type EstadoPeticion } from './hooks/usePeticion';
 export { useVacantes } from './hooks/useVacantes';
 export { useDetalleVacante } from './hooks/useDetalleVacante';
-export { usePipeline } from './hooks/usePipeline';
 export { useCandidatosEtapa } from './hooks/useCandidatosEtapa';
 export { useDetalleCandidato } from './hooks/useDetalleCandidato';
 export { useSeleccionMultiple, type SeleccionMultiple } from './hooks/useSeleccionMultiple';
