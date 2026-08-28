@@ -5,13 +5,10 @@ import { defineConfig } from 'vitest/config';
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * `@geb/*` está enlazado con `link:` desde otro repo que trae su propia copia
- * de react/@mui/material/@emotion. Sin este alias, la resolución de módulos
- * carga DOS copias de React y el árbol revienta al montar en las pruebas
- * ("A React Element from an older version of React was rendered"). Se fuerza
- * que todo resuelva contra las copias de este repo, igual que en la config de
- * build. TODO: reevaluar/quitar este alias si la librería enlazada sube sus
- * peers (react/@mui/material/@emotion) a las mismas versiones que este repo.
+ * Fuerza que react/@mui/material/@emotion resuelvan contra las copias de este
+ * repo (igual que en la config de build), para no cargar dos copias de React
+ * por el `link:` de `@geb/*`. TODO: quitar cuando esa librería suba sus peers
+ * a las mismas versiones que este repo.
  */
 const forzarCopiaLocal = [
   'react',
