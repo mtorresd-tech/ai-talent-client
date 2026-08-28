@@ -1,48 +1,46 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { EtapaPipeline } from '../api/vacantes';
 import { RailPipeline } from './RailPipeline';
 
-function etapa(clave: string, orden: number): EtapaPipeline {
-  return { clave, nombre: clave, orden, total: orden, pendientesDecision: 0, automatica: false };
-}
-
-const pipeline = [etapa('SELECTA', 1), etapa('BLUESITE', 2), etapa('OFERTA', 3)];
-
-const props = {
-  pipeline,
-  cargando: false,
-  error: null,
-  onReintentar: vi.fn(),
-};
-
 describe('RailPipeline', () => {
-  it('deshabilita la flecha anterior en la primera etapa', () => {
-    render(<RailPipeline {...props} etapaActivaClave="SELECTA" onSeleccionarEtapa={vi.fn()} />);
+  it('dibuja las fases SAP y los pasos internos', () => {
+    render(<RailPipeline pasoActivo="SELECTA" onSeleccionarPaso={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: 'Etapa anterior' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Etapa siguiente' })).toBeEnabled();
+    // Fases SAP.
+    expect(screen.getByText('Postulantes')).toBeInTheDocument();
+    expect(screen.getByText('Prefiltro telefónico')).toBeInTheDocument();
+    expect(screen.getByText('Estudio de seguridad y examen médico')).toBeInTheDocument();
+    // Pasos internos.
+    expect(screen.getByRole('button', { name: /Selecta/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Listado de filtrados/ })).toBeInTheDocument();
   });
 
-  it('deshabilita la flecha siguiente en la última etapa', () => {
-    render(<RailPipeline {...props} etapaActivaClave="OFERTA" onSeleccionarEtapa={vi.fn()} />);
+  it('muestra la nota de las fases sin soporte en IA Talento', () => {
+    render(<RailPipeline pasoActivo="SELECTA" onSeleccionarPaso={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: 'Etapa siguiente' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Etapa anterior' })).toBeEnabled();
+    expect(screen.getAllByText('Fuera de IA Talento').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Portal del líder/).length).toBeGreaterThan(0);
   });
 
-  it('notifica la etapa elegida', async () => {
-    const onSeleccionarEtapa = vi.fn();
-    render(
-      <RailPipeline
-        {...props}
-        etapaActivaClave="SELECTA"
-        onSeleccionarEtapa={onSeleccionarEtapa}
-      />,
+  it('notifica el paso elegido', async () => {
+    const onSeleccionarPaso = vi.fn();
+    render(<RailPipeline pasoActivo="SELECTA" onSeleccionarPaso={onSeleccionarPaso} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Listado de filtrados/ }));
+    expect(onSeleccionarPaso).toHaveBeenCalledWith('LISTA_FILTRADOS');
+  });
+
+  it('marca el paso activo con aria-pressed', () => {
+    render(<RailPipeline pasoActivo="LISTA_FILTRADOS" onSeleccionarPaso={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /Listado de filtrados/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
     );
-
-    await userEvent.click(screen.getByRole('button', { name: /BLUESITE/ }));
-    expect(onSeleccionarEtapa).toHaveBeenCalledWith(expect.objectContaining({ clave: 'BLUESITE' }));
+    expect(screen.getByRole('button', { name: /^Selecta/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 });
