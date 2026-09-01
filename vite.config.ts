@@ -6,13 +6,9 @@ import { defineConfig } from 'vite';
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * `@geb/*` está enlazado con `link:` desde `geb-frontend-libs` (otro repo con
- * su propia copia de react/@mui/material/@emotion). Sin este alias, Vite
- * resuelve esos paquetes por archivo de origen y termina cargando DOS copias
- * de React — el árbol revienta al montar ("A React Element from an older
- * version of React was rendered"). Forzamos que todo resuelva contra las
- * copias de este repo. TODO: reevaluar/quitar este alias si `geb-frontend-libs`
- * sube sus peers (react/@mui/material/@emotion) a las mismas versiones que
+ * Fuerza que react/@mui/material/@emotion resuelvan contra las copias de este
+ * repo, para no cargar dos copias de React por el `link:` de `@geb/*`. TODO:
+ * quitar cuando `geb-frontend-libs` suba sus peers a las mismas versiones que
  * este repo.
  */
 const forzarCopiaLocal = [
