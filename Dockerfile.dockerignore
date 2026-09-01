@@ -1,0 +1,33 @@
+# Dependencias y artefactos de build locales: cada stage del Dockerfile los
+# regenera dentro de la imagen; no deben viajar en el contexto de build.
+node_modules
+dist
+dist-ssr
+coverage
+
+# Historial de git.
+.git
+.gitignore
+
+# Variables de entorno locales: los valores de cada entorno (dev/QA/prod) se
+# pasan como --build-arg VITE_*, nunca leyendo un .env del checkout local.
+.env
+.env.*
+
+# Editor y sistema operativo.
+.vscode
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*

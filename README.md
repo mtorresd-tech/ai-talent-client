@@ -18,15 +18,16 @@ Cosinte y Medilaboral.
 
 - Node 18.18 o superior (desarrollado y probado con Node 24).
 - pnpm 10.
-- El repo **`geb-frontend-libs`** clonado como hermano de este repo (mismo
-  directorio padre), es decir:
+- El repo **`geb-frontend-libs`** clonado dos niveles arriba de este repo
+  (en el directorio abuelo, no en el padre inmediato), es decir:
   ```
-  <directorio-padre>/
-  ├── SELECTA Frontend/     (este repo)
+  <directorio-abuelo>/
+  ├── <cualquier-carpeta-intermedia>/
+  │   └── SELECTA Frontend/     (este repo)
   └── geb-frontend-libs/
   ```
   Los paquetes `@geb/*` se consumen como dependencia local (`link:`) apuntando
-  a `../geb-frontend-libs/packages/<paquete>`, así que ese repo tiene que
+  a `../../geb-frontend-libs/packages/<paquete>`, así que ese repo tiene que
   existir en esa ruta relativa y estar buildeado
   (`pnpm build` dentro de `geb-frontend-libs`) antes de instalar aquí. Esto es
   temporal: cuando `@geb/*` se publique en un feed de paquetes, estas
@@ -87,6 +88,88 @@ src/
 Los features no se importan entre sí (excepto `procesos`, que consume tipos
 de `integraciones`); lo reutilizable entre proyectos GEB se propone como
 paquete `@geb/*`, no como código duplicado en este repo.
+
+## Docker
+
+La imagen se construye con un `Dockerfile` multi-stage: un stage compila los
+paquetes `@geb/*` desde el código fuente de `geb-frontend-libs` (todavía no
+hay feed npm privado donde estén publicados), otro instala dependencias con
+pnpm y compila el frontend con Vite, y el último sirve los estáticos
+resultantes con nginx.
+
+Por eso el build necesita un contexto que incluya, en algún nivel, tanto
+este repo como `geb-frontend-libs/` — nunca se ejecuta `docker build .`
+desde `SELECTA Frontend/` sola. Como la ruta de cada repo dentro de ese
+contexto depende de cómo estén organizados localmente (no siempre son
+hermanos directos bajo el mismo padre), se pasan como build args
+(`GEB_LIBS_SUBDIR` y `FRONTEND_SUBDIR`, ambas relativas al contexto).
+
+```
+# Caso 1: ambos repos como hermanos directos bajo un mismo padre.
+# Desde ese directorio padre (valores por defecto, sin build args extra):
+
+docker build \
+  --file "SELECTA Frontend/Dockerfile" \
+  --tag ia-talento-frontend:dev \
+  --build-arg VITE_API_BASE_URL=https://api-dev.example.com \
+  --build-arg VITE_ENTRA_REDIRECT_URI=https://frontend-dev.example.com \
+  --build-arg VITE_ENTRA_SCOPES="openid profile email" \
+  --build-arg VITE_URL_SUCCESSFACTORS=https://successfactors-dev.example.com \
+  .
+```
+
+```
+# Caso 2: este repo anidado un nivel más abajo que "geb-frontend-libs"
+# (por ejemplo, geb-frontend-libs y una carpeta intermedia que contiene a
+# SELECTA Frontend, ambas bajo el mismo directorio abuelo). Desde ese
+# directorio abuelo, indicando la ruta relativa de cada uno:
+
+docker build \
+  --file "azure/SELECTA Frontend/Dockerfile" \
+  --tag ia-talento-frontend:dev \
+  --build-arg GEB_LIBS_SUBDIR=geb-frontend-libs \
+  --build-arg FRONTEND_SUBDIR="azure/SELECTA Frontend" \
+  --build-arg VITE_API_BASE_URL=https://api-dev.example.com \
+  --build-arg VITE_ENTRA_REDIRECT_URI=http://localhost:8080 \
+  --build-arg VITE_ENTRA_SCOPES="openid profile email" \
+  .
+```
+
+En ambos casos, dejar `VITE_ENTRA_CLIENT_ID`/`VITE_ENTRA_TENANT_ID` sin
+pasar es válido para una primera prueba local: la imagen queda en modo demo
+(login simulado).
+
+El archivo de exclusión del build se llama `Dockerfile.dockerignore` (no
+`.dockerignore`) y vive junto al `Dockerfile`: como el contexto no es esta
+carpeta, un `.dockerignore` suelto aquí nunca se leería, así que se usa el
+nombre que Docker prioriza para el `Dockerfile` indicado con `--file`.
+
+### Variables de entorno como build args
+
+| Variable                                                                                          | Notas                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`                                                                               | URL base del backend de orquestación.                                                                                                        |
+| `VITE_ENTRA_CLIENT_ID` / `VITE_ENTRA_TENANT_ID` / `VITE_ENTRA_REDIRECT_URI` / `VITE_ENTRA_SCOPES` | Registro de la app en Microsoft Entra ID. Vacías = login simulado en memoria (modo demo).                                                    |
+| `VITE_URL_SUCCESSFACTORS`                                                                         | Declarada como build arg, pero el código de esta rama todavía no la tipa en `vite-env.d.ts`, así que por ahora no tiene efecto en el bundle. |
+
+Todas son variables de **build-time**: Vite las reemplaza al compilar, así
+que cada combinación de valores requiere una imagen distinta — no se pueden
+cambiar en runtime sin reconstruir.
+
+### Ejecutar la imagen
+
+```
+docker run -p 8080:8080 ia-talento-frontend:dev
+```
+
+El stage final usa `nginx-unprivileged` (corre como usuario no root), que
+escucha en el puerto no privilegiado 8080.
+
+### Notas pendientes
+
+- `geb-frontend-libs` todavía no tiene su propio `Dockerfile.dockerignore`
+  ni consideraciones de build Docker; si ese repo crece, conviene agregarle
+  uno (fuera del alcance de este repo).
 
 ## Convenciones
 
