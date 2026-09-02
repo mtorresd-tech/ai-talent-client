@@ -182,7 +182,7 @@ export function ListaRankingCandidatos({
         paginacion={{
           pagina,
           tamanoPagina,
-          totalFilas: respuesta?.meta.total ?? 0,
+          totalFilas: respuesta?.meta?.total ?? 0,
           onCambioPagina,
         }}
         estadoVacio={<GebEmptyState titulo="No hay candidatos en este paso" />}
