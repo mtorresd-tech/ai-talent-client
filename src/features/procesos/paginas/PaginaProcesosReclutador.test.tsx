@@ -6,6 +6,7 @@ import {
   errorApi,
   type ClienteApiFalso,
 } from '../../../test/clienteApiFalso';
+import { establecerAnchoViewport } from '../../../test/matchMedia';
 import { PaginaProcesosReclutador } from './PaginaProcesosReclutador';
 
 const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | null }));
@@ -214,6 +215,45 @@ describe('PaginaProcesosReclutador', () => {
     );
     expect(await screen.findByText('73%')).toBeInTheDocument();
     expect(screen.getByText('Comunicación')).toBeInTheDocument();
+  });
+
+  it('en mobile aplica el patrón master–detail: lista → detalle → volver a la lista', async () => {
+    establecerAnchoViewport(400);
+    const usuario = userEvent.setup();
+    render(<PaginaProcesosReclutador />);
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+
+    // Solo la lista: el resultado y el botón de volver todavía no aparecen.
+    expect(screen.getByText('Beto Ruiz')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Volver a la lista/ })).not.toBeInTheDocument();
+
+    await usuario.click(screen.getByText('Ana Pérez'));
+
+    // Al seleccionar, se ve solo el detalle con la acción de volver.
+    expect(await screen.findByText('73%')).toBeInTheDocument();
+    expect(screen.queryByText('Beto Ruiz')).not.toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Volver a la lista/ }));
+
+    // Vuelve a verse la lista, con su estado conservado.
+    expect(await screen.findByText('Beto Ruiz')).toBeInTheDocument();
+    expect(screen.queryByText('73%')).not.toBeInTheDocument();
+  });
+
+  it('aísla el ancho de la página de su contenido para no desbordar en mobile', async () => {
+    const usuario = userEvent.setup();
+    const { container } = render(<PaginaProcesosReclutador />);
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+
+    // El contenedor raíz fija su ancho al del viewport (`contain: inline-size`),
+    // así el contenido ancho scrollea dentro de cada componente y no de la página.
+    expect(container.firstElementChild).toHaveStyle({ contain: 'inline-size' });
   });
 
   it('envía a prefiltro con fallo parcial y recarga la lista', async () => {
