@@ -16,11 +16,11 @@ export interface TarjetaDetalleVacanteProps {
 
 function Campo({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       <Typography variant="caption" sx={{ opacity: 0.7, display: 'block' }}>
         {etiqueta}
       </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
         {valor}
       </Typography>
     </Box>
@@ -70,8 +70,8 @@ export function TarjetaDetalleVacante({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)' },
-            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+            gap: { xs: 1.5, sm: 2 },
           }}
         >
           <Campo etiqueta="Área · ciudad" valor={areaCiudad} />
