@@ -54,6 +54,27 @@ describe('usePeticion', () => {
     await waitFor(() => expect(result.current.datos).toBe('vigente'));
   });
 
+  it('conserva los datos previos mientras carga la siguiente respuesta', async () => {
+    const primera = diferida<string>();
+    const segunda = diferida<string>();
+    const ejecutor = vi.fn(() => primera.promesa).mockReturnValueOnce(primera.promesa);
+
+    const { result, rerender } = renderHook(({ dep }) => usePeticion(ejecutor, [dep]), {
+      initialProps: { dep: 'a' },
+    });
+    primera.resolver('inicial');
+    await waitFor(() => expect(result.current.datos).toBe('inicial'));
+
+    ejecutor.mockReturnValueOnce(segunda.promesa);
+    rerender({ dep: 'b' });
+
+    expect(result.current.cargando).toBe(true);
+    expect(result.current.datos).toBe('inicial');
+
+    segunda.resolver('siguiente');
+    await waitFor(() => expect(result.current.datos).toBe('siguiente'));
+  });
+
   it('normaliza el error y lo expone', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const ejecutor = () => Promise.reject(new Error('fallo'));
