@@ -30,5 +30,12 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
+    // `v8` reporta 0% aquí: el `%20` literal en la ruta del proyecto rompe su
+    // emparejamiento de archivos. `istanbul` no depende de esa ruta.
+    coverage: {
+      provider: 'istanbul',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx'],
+    },
   },
 });

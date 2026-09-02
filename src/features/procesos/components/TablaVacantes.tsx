@@ -111,6 +111,12 @@ export function TablaVacantes({
         '& tbody tr:has([data-fila-seleccionada]) td:first-of-type': {
           boxShadow: (theme) => `inset 3px 0 0 0 ${theme.palette.primary.main}`,
         },
+        // Mismo resalte en la vista de tarjetas (viewports `< sm`), donde no hay
+        // filas de tabla.
+        '& [data-geb="GebDataTable-tarjetas"] .MuiCard-root:has([data-fila-seleccionada])': {
+          bgcolor: 'action.selected',
+          boxShadow: (theme) => `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+        },
         // La paginación no encoge sola en pantallas angostas; se envuelve en
         // vez de forzar scroll horizontal.
         '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', rowGap: 0.25 },
@@ -127,7 +133,7 @@ export function TablaVacantes({
         paginacion={{
           pagina,
           tamanoPagina,
-          totalFilas: respuesta?.meta.total ?? 0,
+          totalFilas: respuesta?.meta?.total ?? 0,
           onCambioPagina,
         }}
         estadoVacio={

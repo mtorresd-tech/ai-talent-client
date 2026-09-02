@@ -181,7 +181,9 @@ export function PaginaProcesosReclutador() {
   };
 
   return (
-    <Stack spacing={{ xs: 1.5, sm: 2 }}>
+    // `contain: inline-size` fija el ancho de la página al del viewport; el
+    // contenido ancho scrollea dentro de cada componente, no de la página.
+    <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ minWidth: 0, contain: 'inline-size' }}>
       <TablaVacantes
         respuesta={vacantes.datos}
         cargando={vacantes.cargando}
@@ -205,7 +207,12 @@ export function PaginaProcesosReclutador() {
             onReintentar={detalleVacante.recargar}
           />
           <RailPipeline pasoActivo={pasoClave} onSeleccionarPaso={seleccionarPaso} />
-          <LayoutPasoPipeline izquierda={columnaIzquierda()} derecha={columnaDerecha()} />
+          <LayoutPasoPipeline
+            izquierda={columnaIzquierda()}
+            derecha={columnaDerecha()}
+            haySeleccion={candidatoId !== null && operativa}
+            onVolver={() => setCandidatoId(null)}
+          />
         </>
       )}
 

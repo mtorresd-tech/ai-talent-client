@@ -13,7 +13,15 @@ export interface RailPipelineProps {
   onSeleccionarPaso: (clave: string) => void;
 }
 
-const DESPLAZAMIENTO_PX = 320;
+/**
+ * Fracción del ancho visible del rail que avanza cada click de flecha. Un valor
+ * menor que 1 deja una ficha de solapamiento entre "pantallas" para no perder
+ * el hilo del recorrido.
+ */
+const FRACCION_DESPLAZAMIENTO = 0.8;
+
+/** Desplazamiento mínimo por click, para viewports muy angostos. */
+const DESPLAZAMIENTO_MINIMO_PX = 160;
 
 /**
  * Rail del pipeline con dos niveles: fases de referencia de SuccessFactors en
@@ -40,7 +48,13 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
   }, [actualizarFlechas]);
 
   const desplazar = (direccion: -1 | 1) => {
-    railRef.current?.scrollBy?.({ left: direccion * DESPLAZAMIENTO_PX, behavior: 'smooth' });
+    const rail = railRef.current;
+    if (!rail) return;
+    const tramo = Math.min(
+      rail.scrollWidth,
+      Math.max(DESPLAZAMIENTO_MINIMO_PX, rail.clientWidth * FRACCION_DESPLAZAMIENTO),
+    );
+    rail.scrollBy?.({ left: direccion * tramo, behavior: 'smooth' });
   };
 
   const indiceActivo = PASOS_PIPELINE.findIndex((paso) => paso.clave === pasoActivo);
@@ -52,13 +66,20 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
         size="small"
         disabled={!puedeIzquierda}
         onClick={() => desplazar(-1)}
-        sx={{ alignSelf: 'center' }}
+        sx={{
+          alignSelf: 'center',
+          p: { xs: 1, sm: 0.5 },
+          minWidth: { xs: 44, sm: 'auto' },
+          minHeight: { xs: 44, sm: 'auto' },
+        }}
       >
         <ChevronLeftIcon />
       </IconButton>
 
       <Box
         ref={railRef}
+        role="group"
+        aria-label="Fases del pipeline"
         onScroll={actualizarFlechas}
         sx={{
           display: 'flex',
@@ -86,8 +107,8 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
               key={fase.clave}
               sx={{
                 flex: '1 0 auto',
-                minWidth: { xs: 132, sm: 150 },
-                maxWidth: 190,
+                minWidth: { xs: 200, sm: 150 },
+                maxWidth: { xs: 260, sm: 190 },
                 display: 'flex',
                 flexDirection: 'column',
                 borderRadius: 2,
@@ -176,6 +197,7 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
                           alignItems: 'center',
                           gap: 0.75,
                           width: '100%',
+                          minHeight: { xs: 44, sm: 0 },
                           textAlign: 'left',
                           cursor: 'pointer',
                           borderRadius: 1.5,
@@ -196,16 +218,16 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
                               ? 'success.dark'
                               : 'text.secondary',
                           px: 0.75,
-                          py: 0.5,
-                          fontSize: 11,
+                          py: { xs: 1, sm: 0.5 },
+                          fontSize: { xs: 12, sm: 11 },
                           fontWeight: 600,
                           lineHeight: 1.25,
                         }}
                       >
                         <Box
                           sx={{
-                            width: 6,
-                            height: 6,
+                            width: { xs: 8, sm: 6 },
+                            height: { xs: 8, sm: 6 },
                             borderRadius: '50%',
                             flexShrink: 0,
                             bgcolor: 'currentColor',
@@ -227,7 +249,12 @@ export function RailPipeline({ pasoActivo, onSeleccionarPaso }: RailPipelineProp
         size="small"
         disabled={!puedeDerecha}
         onClick={() => desplazar(1)}
-        sx={{ alignSelf: 'center' }}
+        sx={{
+          alignSelf: 'center',
+          p: { xs: 1, sm: 0.5 },
+          minWidth: { xs: 44, sm: 'auto' },
+          minHeight: { xs: 44, sm: 'auto' },
+        }}
       >
         <ChevronRightIcon />
       </IconButton>

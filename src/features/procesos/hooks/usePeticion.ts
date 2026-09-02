@@ -56,7 +56,9 @@ export function usePeticion<T>(
     let activo = true;
 
     const cargar = async (): Promise<void> => {
-      setEstado({ datos: null, cargando: true, error: null });
+      // Conserva `datos` mientras carga, para no colapsar la región a un
+      // estado vacío y evitar el salto de layout.
+      setEstado((previo) => ({ datos: previo.datos, cargando: true, error: null }));
       try {
         const respuesta = await ejecutor(controlador.signal);
         if (!activo || controlador.signal.aborted) return;

@@ -20,7 +20,7 @@ export interface ResultadoSelectaProps {
 
 function Metrica({ etiqueta, valor }: { etiqueta: string; valor: number | null }) {
   return (
-    <Box sx={{ flex: 1, minWidth: 120 }}>
+    <Box sx={{ flex: 1, minWidth: { xs: 96, sm: 120 } }}>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {etiqueta}
       </Typography>
@@ -94,7 +94,7 @@ export function ResultadoSelecta({
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
-        p: 3,
+        p: { xs: 2, sm: 3 },
       }}
     >
       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -103,7 +103,10 @@ export function ResultadoSelecta({
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         Afinidad total
       </Typography>
-      <Typography variant="h3" sx={{ fontWeight: 800, color: 'primary.main' }}>
+      <Typography
+        variant="h3"
+        sx={{ fontWeight: 800, color: 'primary.main', fontSize: { xs: '2rem', sm: '3rem' } }}
+      >
         {Math.round(desglose.porcentajeTotal)}%
       </Typography>
       <LinearProgress
