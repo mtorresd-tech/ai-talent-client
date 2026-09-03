@@ -396,6 +396,7 @@ describe('PaginaProcesosReclutador · paso Anonimización', () => {
       expect(llamada?.[1].params.estado).toEqual([
         'INFORME_INCOGNITO',
         'EN_REVISION_LIDER',
+        'APROBADO_LIDER_PRUEBAS',
         'RECHAZADO_LIDER',
       ]);
     });
