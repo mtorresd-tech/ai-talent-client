@@ -15,6 +15,12 @@ describe('describirEstadoRevisionLider', () => {
     expect(descripcion).toMatch(/Esperando su decisión/i);
   });
 
+  it('describe la aprobación del líder', () => {
+    const { titulo, descripcion } = describirEstadoRevisionLider('APROBADO_LIDER_PRUEBAS');
+    expect(titulo).toBe('Aprobado por el líder');
+    expect(descripcion).toMatch(/aprobó al candidato/i);
+  });
+
   it('describe el rechazo del líder', () => {
     const { titulo, descripcion } = describirEstadoRevisionLider('RECHAZADO_LIDER');
     expect(titulo).toBe('Descartado por el líder');
@@ -24,28 +30,25 @@ describe('describirEstadoRevisionLider', () => {
   it('para un estado fuera de la lista cae al catálogo cuando lo tiene', () => {
     const catalogo = [
       {
-        clave: 'APROBADO_LIDER_PRUEBAS',
-        etiqueta: 'Aprobado por el líder',
-        descripcion: 'El líder aprobó al candidato para pruebas.',
-        categoria: 'APROBADO',
-        terminal: false,
+        clave: 'EXPIRADO_SLA_LIDER',
+        etiqueta: 'Venció el plazo del líder',
+        descripcion: 'La decisión humana quedó sin tomar dentro del plazo.',
+        categoria: 'EXCEPCION',
+        terminal: true,
         compuertaPendiente: null,
         compuertaEtiqueta: null,
         transicionesPermitidas: [],
       },
     ] as unknown as EstadoCatalogo[];
 
-    const { titulo, descripcion } = describirEstadoRevisionLider(
-      'APROBADO_LIDER_PRUEBAS',
-      catalogo,
-    );
-    expect(titulo).toBe('Aprobado por el líder');
-    expect(descripcion).toBe('El líder aprobó al candidato para pruebas.');
+    const { titulo, descripcion } = describirEstadoRevisionLider('EXPIRADO_SLA_LIDER', catalogo);
+    expect(titulo).toBe('Venció el plazo del líder');
+    expect(descripcion).toBe('La decisión humana quedó sin tomar dentro del plazo.');
   });
 
   it('sin catálogo, un estado desconocido cae a Title Case y descripción vacía', () => {
-    const { titulo, descripcion } = describirEstadoRevisionLider('APROBADO_LIDER_PRUEBAS');
-    expect(titulo).toBe('Aprobado Lider Pruebas');
+    const { titulo, descripcion } = describirEstadoRevisionLider('EXPIRADO_SLA_LIDER');
+    expect(titulo).toBe('Expirado Sla Lider');
     expect(descripcion).toBe('');
   });
 });
