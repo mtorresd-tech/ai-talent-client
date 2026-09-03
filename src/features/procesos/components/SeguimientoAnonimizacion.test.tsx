@@ -88,6 +88,14 @@ describe('SeguimientoAnonimizacion', () => {
     expect(screen.getByText(/envío al líder son automáticos/i)).toBeInTheDocument();
   });
 
+  it('con candidato aprobado por el líder muestra la frase de aprobación', () => {
+    render(
+      <SeguimientoAnonimizacion {...base} candidato={candidato('APROBADO_LIDER_PRUEBAS')} />,
+    );
+    expect(screen.getByText('Aprobado por el líder')).toBeInTheDocument();
+    expect(screen.getByText(/aprobó al candidato/i)).toBeInTheDocument();
+  });
+
   it('con candidato rechazado por el líder muestra la frase de descarte', () => {
     render(<SeguimientoAnonimizacion {...base} candidato={candidato('RECHAZADO_LIDER')} />);
     expect(screen.getByText(/El líder descartó al candidato/i)).toBeInTheDocument();
