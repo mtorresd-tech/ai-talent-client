@@ -142,8 +142,14 @@ export function obtenerCandidato(
   });
 }
 
-export function obtenerHistorial(clienteApi: GebApiClient, jobApplicationId: string) {
-  return clienteApi.get<EventoHistorial[]>(`/candidatos/${jobApplicationId}/historial`);
+export function obtenerHistorial(
+  clienteApi: GebApiClient,
+  jobApplicationId: string,
+  opciones: OpcionesPeticion = {},
+) {
+  return clienteApi.get<EventoHistorial[]>(`/candidatos/${jobApplicationId}/historial`, {
+    signal: opciones.signal,
+  });
 }
 
 export function obtenerExtraccion(clienteApi: GebApiClient, jobApplicationId: string) {
