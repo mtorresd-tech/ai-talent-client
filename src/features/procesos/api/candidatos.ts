@@ -4,6 +4,7 @@ import type {
   EstadoProceso,
   RespuestaPaginada,
   SincronizacionSfsf,
+  TipoCandidato,
 } from '../../../shared/tipos/dominio';
 import type { EstadoIntegracion } from '../../integraciones';
 import type { OpcionesPeticion } from './vacantes';
@@ -47,6 +48,8 @@ export interface CandidatoDetalle extends CandidatoResumen {
   integraciones: EstadoIntegracion[];
   identidadRevelada: boolean;
   sincronizacionSfsf: SincronizacionSfsf;
+  /** Interno / externo al grupo. Solo llega en el detalle, no en el objeto de lista. */
+  tipoCandidato: TipoCandidato;
 }
 
 export interface EventoHistorial {
