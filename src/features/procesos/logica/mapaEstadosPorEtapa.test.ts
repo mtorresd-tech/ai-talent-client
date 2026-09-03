@@ -26,13 +26,13 @@ describe('estadosDeEtapa', () => {
     expect(estadosDeEtapa(null)).toEqual([]);
   });
 
-  it('traduce el paso de anonimización a los tres estados de la etapa', () => {
+  it('traduce el paso de anonimización a los estados de la revisión del líder', () => {
     expect(estadosDeEtapa('ANONIMIZACION')).toEqual([
       'INFORME_INCOGNITO',
       'EN_REVISION_LIDER',
+      'APROBADO_LIDER_PRUEBAS',
       'RECHAZADO_LIDER',
     ]);
-    expect(estadosDeEtapa('ANONIMIZACION')).not.toContain('APROBADO_LIDER_PRUEBAS');
   });
 });
 
