@@ -18,6 +18,10 @@ const COPY: Partial<Record<EstadoProceso, ResumenRevisionLider>> = {
     titulo: 'En revisión del líder',
     descripcion: 'El líder está revisando el informe incógnito. Esperando su decisión.',
   },
+  APROBADO_LIDER_PRUEBAS: {
+    titulo: 'Aprobado por el líder',
+    descripcion: 'El líder aprobó al candidato tras la evaluación a ciegas. Continúa el proceso.',
+  },
   RECHAZADO_LIDER: {
     titulo: 'Descartado por el líder',
     descripcion: 'El líder descartó al candidato en la revisión del informe incógnito.',
@@ -26,10 +30,9 @@ const COPY: Partial<Record<EstadoProceso, ResumenRevisionLider>> = {
 
 /**
  * Deriva el título y la descripción del estado de revisión del líder. Para los
- * tres estados de la etapa usa el copy propio; para cualquier otro estado (por
- * ejemplo si el backend devuelve `APROBADO_LIDER_PRUEBAS` de forma transitoria)
- * cae a la etiqueta y la descripción del catálogo, y a Title Case si el catálogo
- * no está disponible, sin romper.
+ * estados de la etapa usa el copy propio; para cualquier otro estado cae a la
+ * etiqueta y la descripción del catálogo, y a Title Case si el catálogo no está
+ * disponible, sin romper.
  */
 export function describirEstadoRevisionLider(
   estado: EstadoProceso | string | null | undefined,
