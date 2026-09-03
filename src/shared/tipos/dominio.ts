@@ -49,6 +49,14 @@ export type EstadoProceso =
   | 'EXPIRADO_SLA_LIDER'
   | 'ERROR_INTEGRACION';
 
+/**
+ * Categoría de agrupación de un `EstadoProceso`, única señal de color para
+ * chips y puntos de línea de tiempo.
+ * TODO: mantener sincronizado a mano con el enum `categoria` de
+ * `EstadoCatalogo` del contrato del backend — hoy es una copia manual.
+ */
+export type CategoriaEstado = 'EN_CURSO' | 'APROBADO' | 'DESCARTADO' | 'EXCEPCION';
+
 /** Puntos del proceso donde se aprueba o rechaza a una persona candidata. */
 export type Compuerta =
   | 'RANKING'
