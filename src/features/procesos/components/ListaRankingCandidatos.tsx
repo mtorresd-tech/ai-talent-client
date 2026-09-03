@@ -32,6 +32,8 @@ export interface ListaRankingCandidatosProps {
   onAlternarSeleccion: (id: string) => void;
   onCambioPagina: (pagina: number, tamanoPagina: number) => void;
   onClickCandidato: (candidato: CandidatoResumen) => void;
+  /** Abre la subpágina de detalle de un candidato desde su fila. */
+  onVerDetalle?: (candidato: CandidatoResumen) => void;
   onReintentar: () => void;
 }
 
@@ -55,6 +57,7 @@ export function ListaRankingCandidatos({
   onAlternarSeleccion,
   onCambioPagina,
   onClickCandidato,
+  onVerDetalle,
   onReintentar,
 }: ListaRankingCandidatosProps) {
   const esSelecta = variante === 'selecta';
@@ -80,7 +83,7 @@ export function ListaRankingCandidatos({
       const casilla = (
         <Checkbox
           size="small"
-          sx={{ p: 0 }}
+          sx={{ p: 0, mt: '4px' }}
           checked={estaSeleccionado(fila.jobApplicationId)}
           disabled={!habilitado}
           onClick={(evento) => evento.stopPropagation()}
@@ -129,7 +132,9 @@ export function ListaRankingCandidatos({
       campo: 'alias',
       titulo: 'Candidato',
       ancho: esSelecta ? '52%' : '58%',
-      render: (fila: CandidatoResumen) => <FilaCandidato candidato={fila} />,
+      render: (fila: CandidatoResumen) => (
+        <FilaCandidato candidato={fila} onVerDetalle={onVerDetalle} />
+      ),
     },
     ...(esSelecta ? [columnaAfinidad] : [columnaEstado]),
   ]);
@@ -142,6 +147,11 @@ export function ListaRankingCandidatos({
         // (nombre + origen + fecha) y empuja la tabla a un scroll horizontal
         // innecesario en el layout de 340px del paso.
         '& .MuiTable-root': { tableLayout: 'fixed', width: '100%' },
+        // Con el bloque de identidad a varias líneas (nombre + meta + "Ver
+        // detalle"), alinear el contenido de cada celda arriba deja el avatar,
+        // el checkbox y la afinidad a la altura del nombre, no flotando al
+        // centro vertical de la fila.
+        '& .MuiTableCell-root': { verticalAlign: 'top' },
         ...(esSelecta
           ? {
               // Acerca el checkbox al avatar: recorta el relleno lateral entre

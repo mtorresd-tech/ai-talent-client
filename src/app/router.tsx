@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth, RequireRole } from '@geb/auth';
 import { AppLayout } from './layout/AppLayout';
 import { PaginaInicioSesion } from '../features/auth';
-import { PaginaProcesos } from '../features/procesos';
+import { PaginaProcesos, PaginaDetalleCandidato } from '../features/procesos';
 import { PaginaMetricas } from '../features/metricas';
 import { PaginaNotificaciones } from '../features/notificaciones';
 import { PaginaConfiguracion } from '../features/configuracion';
@@ -23,6 +23,14 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<Navigate to="/procesos" replace />} />
         <Route path="/procesos" element={<PaginaProcesos />} />
+        <Route
+          path="/procesos/candidato/:jobApplicationId"
+          element={
+            <RequireRole roles={[ROL_RECLUTADOR]}>
+              <PaginaDetalleCandidato />
+            </RequireRole>
+          }
+        />
         <Route
           path="/metricas"
           element={

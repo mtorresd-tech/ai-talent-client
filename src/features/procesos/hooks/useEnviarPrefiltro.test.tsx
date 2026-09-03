@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { crearClienteApiFalso, errorApi } from '../../../test/clienteApiFalso';
-import { useEnviarPrefiltro } from './useEnviarPrefiltro';
+import { useEnviarPrefiltro, type ResultadoEnvioPrefiltro } from './useEnviarPrefiltro';
 
 describe('useEnviarPrefiltro', () => {
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe('useEnviarPrefiltro', () => {
 
     const { result } = renderHook(() => useEnviarPrefiltro(cliente));
 
-    let resumen;
+    let resumen!: ResultadoEnvioPrefiltro;
     await act(async () => {
       resumen = await result.current.enviar(['a', 'b']);
     });
@@ -38,7 +38,7 @@ describe('useEnviarPrefiltro', () => {
 
     const { result } = renderHook(() => useEnviarPrefiltro(cliente));
 
-    let resumen;
+    let resumen!: ResultadoEnvioPrefiltro;
     await act(async () => {
       resumen = await result.current.enviar(['1', '2', '3', '4', '5']);
     });

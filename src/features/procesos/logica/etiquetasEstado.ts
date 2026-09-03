@@ -1,4 +1,5 @@
-import type { EstadoProceso } from '../../../shared/tipos/dominio';
+import type { CategoriaEstado, EstadoProceso } from '../../../shared/tipos/dominio';
+import type { EstadoCatalogo } from '../api/catalogos';
 
 /**
  * Diccionario de etiquetas en español para los `EstadoProceso` que aparecen en
@@ -42,7 +43,7 @@ export function etiquetaEstado(estado: string | null | undefined): string {
 }
 
 /** Colores de `Chip` de MUI para los estados que conviven en un mismo paso. */
-export type ColorChipEstado = 'default' | 'warning' | 'info' | 'success';
+export type ColorChipEstado = 'default' | 'warning' | 'info' | 'success' | 'error';
 
 const COLORES: Partial<Record<EstadoProceso, ColorChipEstado>> = {
   // Listado de filtrados: pendiente/completado siguen en curso; preseleccionado
@@ -56,4 +57,49 @@ const COLORES: Partial<Record<EstadoProceso, ColorChipEstado>> = {
 export function colorEstado(estado: string | null | undefined): ColorChipEstado {
   if (!estado) return 'default';
   return COLORES[estado as EstadoProceso] ?? 'default';
+}
+
+const COLOR_POR_CATEGORIA: Record<CategoriaEstado, ColorChipEstado> = {
+  EN_CURSO: 'info',
+  APROBADO: 'success',
+  DESCARTADO: 'error',
+  EXCEPCION: 'warning',
+};
+
+/** Color de chip para una categoría del catálogo de estados. */
+export function colorPorCategoria(categoria: CategoriaEstado | null | undefined): ColorChipEstado {
+  if (!categoria) return 'default';
+  return COLOR_POR_CATEGORIA[categoria] ?? 'default';
+}
+
+function buscarEnCatalogo(
+  catalogo: EstadoCatalogo[] | null | undefined,
+  estado: string | null | undefined,
+): EstadoCatalogo | undefined {
+  if (!catalogo || !estado) return undefined;
+  return catalogo.find((entrada) => entrada.clave === estado);
+}
+
+/**
+ * Etiqueta en español de un estado leída del catálogo del backend; si el
+ * catálogo no cargó o no contiene la clave, cae al diccionario/Title Case.
+ */
+export function resolverEtiquetaEstado(
+  catalogo: EstadoCatalogo[] | null | undefined,
+  estado: string | null | undefined,
+): string {
+  return buscarEnCatalogo(catalogo, estado)?.etiqueta ?? etiquetaEstado(estado);
+}
+
+/**
+ * Color de chip de un estado derivado de la `categoria` del catálogo del
+ * backend; si el catálogo no cargó o no contiene la clave, cae al mapa local.
+ */
+export function resolverColorEstado(
+  catalogo: EstadoCatalogo[] | null | undefined,
+  estado: string | null | undefined,
+): ColorChipEstado {
+  const entrada = buscarEnCatalogo(catalogo, estado);
+  if (entrada) return colorPorCategoria(entrada.categoria);
+  return colorEstado(estado);
 }

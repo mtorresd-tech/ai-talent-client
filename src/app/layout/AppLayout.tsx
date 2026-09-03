@@ -22,6 +22,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const { usuario, logout } = useAuth();
 
+  // El sidebar resalta la entrada cuya `ruta` coincide con `rutaActual`; las
+  // subpáginas (p. ej. `/procesos/candidato/:id`) se normalizan a su sección
+  // base para que la entrada del sidebar siga activa.
+  const rutaActual = location.pathname.startsWith('/procesos') ? '/procesos' : location.pathname;
+
   return (
     <GebAppLayout
       tituloApp="IA Talento"
@@ -32,7 +37,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           : undefined
       }
       onLogout={() => void logout()}
-      rutaActual={location.pathname}
+      rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
     >
       {/* @geb/ui está buildeado contra @types/react 18; el `as any` evita el

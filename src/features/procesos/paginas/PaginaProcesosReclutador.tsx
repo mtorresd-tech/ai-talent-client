@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { GebEmptyState } from '@geb/ui';
@@ -9,6 +10,7 @@ import { useVacantes } from '../hooks/useVacantes';
 import { useDetalleVacante } from '../hooks/useDetalleVacante';
 import { useCandidatosEtapa } from '../hooks/useCandidatosEtapa';
 import { useDetalleCandidato } from '../hooks/useDetalleCandidato';
+import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
 import { esEtapaOperativa, esPasoSelecta } from '../logica/mapaEstadosPorEtapa';
@@ -23,6 +25,7 @@ import { ListaRankingCandidatos } from '../components/ListaRankingCandidatos';
 import { BarraAccionPrefiltro } from '../components/BarraAccionPrefiltro';
 import { ModalConfirmarPrefiltro } from '../components/ModalConfirmarPrefiltro';
 import { ResultadoSelecta } from '../components/ResultadoSelecta';
+import { ResultadoPrefiltro } from '../components/ResultadoPrefiltro';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
 /** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
@@ -34,21 +37,31 @@ const TAMANO_PAGINA_INICIAL = 5;
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
  * filtrados también es operativo; los demás pasos son navegables con un
- * placeholder. El estado (vacante → paso → candidato) vive en el componente;
- * cambiar de paso o de candidato no cambia de ruta.
+ * placeholder. La selección (vacante → paso → candidato) vive en el componente
+ * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
+ * subpágina de detalle del candidato puede reconstruir el listado al volver.
+ * La paginación y la búsqueda de las tablas no se reflejan en la URL.
  */
 export function PaginaProcesosReclutador() {
   const clienteApi = useClienteApi();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [busqueda, setBusqueda] = useState('');
   const [paginaVacantes, setPaginaVacantes] = useState(0);
   const [tamanoPaginaVacantes, setTamanoPaginaVacantes] = useState(TAMANO_PAGINA_INICIAL);
-  const [vacanteId, setVacanteId] = useState<string | null>(null);
+  const [vacanteId, setVacanteId] = useState<string | null>(
+    () => searchParams.get('vacante') || null,
+  );
   // Paso elegido explícitamente por el reclutador; `null` → el paso inicial.
-  const [pasoClaveManual, setPasoClaveManual] = useState<string | null>(null);
+  const [pasoClaveManual, setPasoClaveManual] = useState<string | null>(
+    () => searchParams.get('paso') || null,
+  );
   const [paginaCandidatos, setPaginaCandidatos] = useState(0);
   const [tamanoPaginaCandidatos, setTamanoPaginaCandidatos] = useState(TAMANO_PAGINA_INICIAL);
-  const [candidatoId, setCandidatoId] = useState<string | null>(null);
+  const [candidatoId, setCandidatoId] = useState<string | null>(
+    () => searchParams.get('candidato') || null,
+  );
   const [modalAbierto, setModalAbierto] = useState(false);
 
   const vacantes = useVacantes(clienteApi, {
@@ -62,6 +75,26 @@ export function PaginaProcesosReclutador() {
   const envio = useEnviarPrefiltro(clienteApi);
 
   const pasoClave = pasoClaveManual ?? PASO_INICIAL;
+
+  // Mantiene la selección en la URL (sin apilar entradas de historial) para que
+  // la subpágina de detalle pueda reconstruir el listado al volver.
+  useEffect(() => {
+    const siguiente = new URLSearchParams();
+    if (vacanteId) siguiente.set('vacante', vacanteId);
+    if (pasoClaveManual) siguiente.set('paso', pasoClaveManual);
+    if (candidatoId) siguiente.set('candidato', candidatoId);
+    setSearchParams(siguiente, { replace: true });
+  }, [vacanteId, pasoClaveManual, candidatoId, setSearchParams]);
+
+  const irADetalleCandidato = useCallback(
+    (jobApplicationId: string) => {
+      const params = new URLSearchParams();
+      if (vacanteId) params.set('vacante', vacanteId);
+      params.set('paso', pasoClave);
+      navigate(`/procesos/candidato/${jobApplicationId}?${params.toString()}`);
+    },
+    [navigate, vacanteId, pasoClave],
+  );
 
   const candidatos = useCandidatosEtapa(clienteApi, {
     jobRequisitionId: vacanteId,
@@ -109,6 +142,14 @@ export function PaginaProcesosReclutador() {
 
   const operativa = esEtapaOperativa(pasoClave);
   const esSelecta = esPasoSelecta(pasoClave);
+  // Paso operativo que no es Selecta = "Lista de filtrados": el panel derecho
+  // muestra el prefiltro en vez del resultado de afinidad.
+  const esListaFiltrados = operativa && !esSelecta;
+
+  const prefiltroCandidato = usePrefiltroCandidato(
+    clienteApi,
+    esListaFiltrados ? candidatoId : null,
+  );
 
   const candidatosPagina: CandidatoResumen[] = useMemo(
     () => candidatos.datos?.data ?? [],
@@ -160,6 +201,7 @@ export function PaginaProcesosReclutador() {
           onAlternarSeleccion={seleccion.alternar}
           onCambioPagina={cambioPaginaCandidatos}
           onClickCandidato={(candidato) => setCandidatoId(candidato.jobApplicationId)}
+          onVerDetalle={(candidato) => irADetalleCandidato(candidato.jobApplicationId)}
           onReintentar={candidatos.recargar}
         />
       </Box>
@@ -170,12 +212,28 @@ export function PaginaProcesosReclutador() {
     if (!operativa) {
       return <GebEmptyState titulo="Sin información para este paso" />;
     }
+    if (esListaFiltrados) {
+      return (
+        <ResultadoPrefiltro
+          candidato={detalleCandidato.datos}
+          cargando={detalleCandidato.cargando}
+          error={detalleCandidato.error}
+          onReintentar={detalleCandidato.recargar}
+          prefiltro={prefiltroCandidato.datos}
+          cargandoPrefiltro={prefiltroCandidato.cargando}
+          errorPrefiltro={prefiltroCandidato.error}
+          onReintentarPrefiltro={prefiltroCandidato.recargar}
+          onVerDetalleCompleto={candidatoId ? () => irADetalleCandidato(candidatoId) : undefined}
+        />
+      );
+    }
     return (
       <ResultadoSelecta
         candidato={detalleCandidato.datos}
         cargando={detalleCandidato.cargando}
         error={detalleCandidato.error}
         onReintentar={detalleCandidato.recargar}
+        onVerDetalleCompleto={candidatoId ? () => irADetalleCandidato(candidatoId) : undefined}
       />
     );
   };

@@ -1,64 +1,34 @@
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Link from '@mui/material/Link';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { GebEmptyState } from '@geb/ui';
 import type { ApiError } from '@geb/api-client';
 import type { CandidatoDetalle } from '../api/candidatos';
 import { nombreCandidato } from '../logica/candidato';
 import { EstadoError } from './EstadoError';
+import { ListaTexto, Metrica } from './PiezasAfinidad';
 
 export interface ResultadoSelectaProps {
   candidato: CandidatoDetalle | null;
   cargando: boolean;
   error: ApiError | null;
   onReintentar: () => void;
-}
-
-function Metrica({ etiqueta, valor }: { etiqueta: string; valor: number | null }) {
-  return (
-    <Box sx={{ flex: 1, minWidth: { xs: 96, sm: 120 } }}>
-      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        {etiqueta}
-      </Typography>
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        {valor === null ? '—' : `${Math.round(valor)}%`}
-      </Typography>
-    </Box>
-  );
-}
-
-function ListaTexto({ titulo, valores }: { titulo: string; valores: string[] }) {
-  if (valores.length === 0) return null;
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-        {titulo}
-      </Typography>
-      <List dense disablePadding>
-        {valores.map((valor) => (
-          <ListItem key={valor} disablePadding sx={{ display: 'list-item', ml: 3 }}>
-            <ListItemText primary={valor} />
-          </ListItem>
-        ))}
-      </List>
-    </Box>
-  );
+  /** Si se pasa, se muestra el enlace "Ver detalle completo"; si no, se omite. */
+  onVerDetalleCompleto?: () => void;
 }
 
 /**
  * Panel derecho de la etapa de ranking: resultado de afinidad Selecta del
- * candidato seleccionado. Sin selección muestra un estado vacío; el link "Ver
- * detalle completo" es un stub en esta entrega.
+ * candidato seleccionado. Sin selección muestra un estado vacío. El enlace
+ * "Ver detalle completo" solo se renderiza si se pasa `onVerDetalleCompleto`.
  */
 export function ResultadoSelecta({
   candidato,
   cargando,
   error,
   onReintentar,
+  onVerDetalleCompleto,
 }: ResultadoSelectaProps) {
   if (error) {
     return <EstadoError error={error} onReintentar={onReintentar} />;
@@ -135,12 +105,13 @@ export function ResultadoSelecta({
         </Box>
       )}
 
-      <Box sx={{ mt: 3 }}>
-        {/* TODO: enlazar a la subpágina de detalle completo del candidato cuando exista. */}
-        <Link component="button" type="button" underline="hover" onClick={() => undefined}>
-          Ver detalle completo
-        </Link>
-      </Box>
+      {onVerDetalleCompleto && (
+        <Box sx={{ mt: 3 }}>
+          <Link component="button" type="button" underline="hover" onClick={onVerDetalleCompleto}>
+            Ver detalle completo
+          </Link>
+        </Box>
+      )}
     </Box>
   );
 }
