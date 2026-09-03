@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import {
   crearClienteApiFalso,
@@ -16,6 +18,11 @@ vi.mock('../../../shared/api/clienteApi', () => ({
 }));
 
 let cliente: ClienteApiFalso;
+
+/** Renderiza la página dentro de un router en memoria (usa `useSearchParams`/`useNavigate`). */
+function renderPagina(ui: ReactElement, rutaInicial = '/procesos') {
+  return render(<MemoryRouter initialEntries={[rutaInicial]}>{ui}</MemoryRouter>);
+}
 
 const vacante = {
   jobRequisitionId: 'REQ-1',
@@ -131,7 +138,7 @@ beforeEach(() => {
 describe('PaginaProcesosReclutador', () => {
   it('selecciona una vacante, arma el pipeline local y carga candidatos de ranking', async () => {
     const usuario = userEvent.setup();
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -160,7 +167,7 @@ describe('PaginaProcesosReclutador', () => {
 
   it('el listado de filtrados carga los candidatos en prefiltro / preseleccionados', async () => {
     const usuario = userEvent.setup();
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -189,7 +196,7 @@ describe('PaginaProcesosReclutador', () => {
 
   it('los pasos sin soporte muestran el placeholder "en construcción"', async () => {
     const usuario = userEvent.setup();
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -202,7 +209,7 @@ describe('PaginaProcesosReclutador', () => {
 
   it('al seleccionar un candidato consulta su detalle y muestra el desglose de afinidad', async () => {
     const usuario = userEvent.setup();
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -220,7 +227,7 @@ describe('PaginaProcesosReclutador', () => {
   it('en mobile aplica el patrón master–detail: lista → detalle → volver a la lista', async () => {
     establecerAnchoViewport(400);
     const usuario = userEvent.setup();
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -245,7 +252,7 @@ describe('PaginaProcesosReclutador', () => {
 
   it('aísla el ancho de la página de su contenido para no desbordar en mobile', async () => {
     const usuario = userEvent.setup();
-    const { container } = render(<PaginaProcesosReclutador />);
+    const { container } = renderPagina(<PaginaProcesosReclutador />);
 
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
@@ -262,7 +269,7 @@ describe('PaginaProcesosReclutador', () => {
       .mockRejectedValueOnce(errorApi(409, 'Ya fue decidida'))
       .mockResolvedValueOnce({ estadoNuevo: 'PREFILTRO_PENDIENTE' });
 
-    render(<PaginaProcesosReclutador />);
+    renderPagina(<PaginaProcesosReclutador />);
     await screen.findByText('Analista de Datos');
     await usuario.click(screen.getByText('Analista de Datos'));
     await screen.findByText('Ana Pérez');
@@ -285,5 +292,22 @@ describe('PaginaProcesosReclutador', () => {
       (c) => c[0] === '/vacantes/REQ-1/candidatos',
     );
     expect(llamadasCandidatos.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('restaura vacante, etapa y candidato desde los query params al montar', async () => {
+    renderPagina(
+      <PaginaProcesosReclutador />,
+      '/procesos?vacante=REQ-1&paso=SELECTA&candidato=APP-1',
+    );
+
+    // La vacante seleccionada carga su detalle sin interacción del usuario.
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-1', expect.anything()),
+    );
+    // El candidato seleccionado carga su resultado de afinidad a la derecha.
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-1', expect.anything()),
+    );
+    expect(await screen.findByText('73%')).toBeInTheDocument();
   });
 });
