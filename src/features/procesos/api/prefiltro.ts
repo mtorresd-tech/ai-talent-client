@@ -1,5 +1,6 @@
 import type { GebApiClient } from '@geb/api-client';
 import type { SincronizacionSfsf } from '../../../shared/tipos/dominio';
+import type { OpcionesPeticion } from './vacantes';
 
 export interface Prefiltro {
   jobApplicationId: string;
@@ -25,8 +26,14 @@ export interface PrefiltroRequest {
 }
 
 /** 404 si aún no se ha diligenciado. */
-export function obtenerPrefiltro(clienteApi: GebApiClient, jobApplicationId: string) {
-  return clienteApi.get<Prefiltro>(`/candidatos/${jobApplicationId}/prefiltro`);
+export function obtenerPrefiltro(
+  clienteApi: GebApiClient,
+  jobApplicationId: string,
+  opciones: OpcionesPeticion = {},
+) {
+  return clienteApi.get<Prefiltro>(`/candidatos/${jobApplicationId}/prefiltro`, {
+    signal: opciones.signal,
+  });
 }
 
 /**
