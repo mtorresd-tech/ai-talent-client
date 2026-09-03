@@ -23,10 +23,16 @@ export const CLAVE_ETAPA_ANONIMIZACION = 'ANONIMIZACION';
 export const ESTADOS_POR_ETAPA: Record<string, EstadoProceso[]> = {
   [CLAVE_ETAPA_RANKING]: ['RANKING_SELECTA'],
   LISTA_FILTRADOS: ['PREFILTRO_PENDIENTE', 'PREFILTRO_COMPLETADO', 'PRESELECCIONADO'],
-  // `RECHAZADO_LIDER` (terminal) se incluye para que el reclutador vea por qué un
-  // candidato no avanzó; puede no sumar al embudo del rail y no es un error.
-  // `APROBADO_LIDER_PRUEBAS` no va: al aprobar, el candidato pasa a la etapa de pruebas.
-  [CLAVE_ETAPA_ANONIMIZACION]: ['INFORME_INCOGNITO', 'EN_REVISION_LIDER', 'RECHAZADO_LIDER'],
+  // `APROBADO_LIDER_PRUEBAS` es "Aprobado por el líder" (aún no entra a entrevistas);
+  // el embudo del backend ya lo cuenta en esta etapa. `RECHAZADO_LIDER` (terminal) se
+  // incluye para que el reclutador vea por qué un candidato no avanzó: no suma al
+  // embudo del rail y no es un error.
+  [CLAVE_ETAPA_ANONIMIZACION]: [
+    'INFORME_INCOGNITO',
+    'EN_REVISION_LIDER',
+    'APROBADO_LIDER_PRUEBAS',
+    'RECHAZADO_LIDER',
+  ],
 };
 
 /** Estados asociados a una clave de paso. `[]` si el paso no es operativo. */
