@@ -11,9 +11,10 @@ import { useDetalleVacante } from '../hooks/useDetalleVacante';
 import { useCandidatosEtapa } from '../hooks/useCandidatosEtapa';
 import { useDetalleCandidato } from '../hooks/useDetalleCandidato';
 import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
+import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
-import { esEtapaOperativa, esPasoSelecta } from '../logica/mapaEstadosPorEtapa';
+import { esEtapaOperativa, tipoPanelPaso } from '../logica/mapaEstadosPorEtapa';
 import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
 import { abrirSuccessFactors } from '../logica/successFactors';
 import { TablaVacantes } from '../components/TablaVacantes';
@@ -26,6 +27,7 @@ import { BarraAccionPrefiltro } from '../components/BarraAccionPrefiltro';
 import { ModalConfirmarPrefiltro } from '../components/ModalConfirmarPrefiltro';
 import { ResultadoSelecta } from '../components/ResultadoSelecta';
 import { ResultadoPrefiltro } from '../components/ResultadoPrefiltro';
+import { SeguimientoAnonimizacion } from '../components/SeguimientoAnonimizacion';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
 /** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
@@ -36,8 +38,9 @@ const TAMANO_PAGINA_INICIAL = 5;
  * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
- * filtrados también es operativo; los demás pasos son navegables con un
- * placeholder. La selección (vacante → paso → candidato) vive en el componente
+ * filtrados y la anonimización también son operativos (este último de solo
+ * consulta); los demás pasos son navegables con un placeholder.
+ * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
  * La paginación y la búsqueda de las tablas no se reflejan en la URL.
@@ -70,6 +73,10 @@ export function PaginaProcesosReclutador() {
     busqueda,
   });
   const detalleVacante = useDetalleVacante(clienteApi, vacanteId);
+  // El catálogo de estados se resuelve una sola vez por sesión (caché de módulo);
+  // si falla, la lista y el panel caen al respaldo local sin bloquear la pantalla.
+  const catalogoEstados = useCatalogoEstados(clienteApi);
+  const catalogo = catalogoEstados.datos;
 
   const seleccion = useSeleccionMultiple();
   const envio = useEnviarPrefiltro(clienteApi);
@@ -141,14 +148,14 @@ export function PaginaProcesosReclutador() {
   }, []);
 
   const operativa = esEtapaOperativa(pasoClave);
-  const esSelecta = esPasoSelecta(pasoClave);
-  // Paso operativo que no es Selecta = "Lista de filtrados": el panel derecho
-  // muestra el prefiltro en vez del resultado de afinidad.
-  const esListaFiltrados = operativa && !esSelecta;
+  // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
+  // (listado de filtrados) o anonimización (seguimiento al líder).
+  const panel = tipoPanelPaso(pasoClave);
+  const esSelecta = panel === 'SELECTA';
 
   const prefiltroCandidato = usePrefiltroCandidato(
     clienteApi,
-    esListaFiltrados ? candidatoId : null,
+    panel === 'PREFILTRO' ? candidatoId : null,
   );
 
   const candidatosPagina: CandidatoResumen[] = useMemo(
@@ -197,6 +204,12 @@ export function PaginaProcesosReclutador() {
           pagina={paginaCandidatos}
           tamanoPagina={tamanoPaginaCandidatos}
           variante={esSelecta ? 'selecta' : 'simple'}
+          catalogo={catalogo}
+          mensajeVacio={
+            panel === 'ANONIMIZACION'
+              ? 'No hay candidatos en anonimización para esta vacante.'
+              : undefined
+          }
           estaSeleccionado={seleccion.estaSeleccionado}
           onAlternarSeleccion={seleccion.alternar}
           onCambioPagina={cambioPaginaCandidatos}
@@ -212,30 +225,45 @@ export function PaginaProcesosReclutador() {
     if (!operativa) {
       return <GebEmptyState titulo="Sin información para este paso" />;
     }
-    if (esListaFiltrados) {
-      return (
-        <ResultadoPrefiltro
-          candidato={detalleCandidato.datos}
-          cargando={detalleCandidato.cargando}
-          error={detalleCandidato.error}
-          onReintentar={detalleCandidato.recargar}
-          prefiltro={prefiltroCandidato.datos}
-          cargandoPrefiltro={prefiltroCandidato.cargando}
-          errorPrefiltro={prefiltroCandidato.error}
-          onReintentarPrefiltro={prefiltroCandidato.recargar}
-          onVerDetalleCompleto={candidatoId ? () => irADetalleCandidato(candidatoId) : undefined}
-        />
-      );
+    const onVerDetalleCompleto = candidatoId ? () => irADetalleCandidato(candidatoId) : undefined;
+
+    switch (panel) {
+      case 'PREFILTRO':
+        return (
+          <ResultadoPrefiltro
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            prefiltro={prefiltroCandidato.datos}
+            cargandoPrefiltro={prefiltroCandidato.cargando}
+            errorPrefiltro={prefiltroCandidato.error}
+            onReintentarPrefiltro={prefiltroCandidato.recargar}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
+      case 'ANONIMIZACION':
+        return (
+          <SeguimientoAnonimizacion
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            catalogo={catalogo}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
+      default:
+        return (
+          <ResultadoSelecta
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
     }
-    return (
-      <ResultadoSelecta
-        candidato={detalleCandidato.datos}
-        cargando={detalleCandidato.cargando}
-        error={detalleCandidato.error}
-        onReintentar={detalleCandidato.recargar}
-        onVerDetalleCompleto={candidatoId ? () => irADetalleCandidato(candidatoId) : undefined}
-      />
-    );
   };
 
   return (
