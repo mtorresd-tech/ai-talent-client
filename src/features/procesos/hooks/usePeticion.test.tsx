@@ -35,8 +35,8 @@ describe('usePeticion', () => {
     const primera = diferida<string>();
     const segunda = diferida<string>();
 
-    const ejecutorA = vi.fn(() => primera.promesa);
-    const ejecutorB = vi.fn(() => segunda.promesa);
+    const ejecutorA = vi.fn<(senal: AbortSignal) => Promise<string>>(() => primera.promesa);
+    const ejecutorB = vi.fn<(senal: AbortSignal) => Promise<string>>(() => segunda.promesa);
 
     const { result, rerender } = renderHook(({ ej }) => usePeticion(ej, [ej]), {
       initialProps: { ej: ejecutorA },
