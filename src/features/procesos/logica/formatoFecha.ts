@@ -24,3 +24,20 @@ export function formatearFecha(valor: string | null | undefined): string {
   if (Number.isNaN(fecha.getTime())) return SIN_FECHA;
   return formateador.format(fecha);
 }
+
+const formateadorHora = new Intl.DateTimeFormat('es-CO', {
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+/**
+ * Convierte una fecha ISO en texto `es-CO` con fecha y hora, separadas por
+ * `·` (p. ej. `28 jun 2026 · 09:15 a. m.`). Devuelve `SIN_FECHA` para
+ * entradas nulas, vacías o que no son fechas válidas.
+ */
+export function formatearFechaHora(valor: string | null | undefined): string {
+  if (!valor) return SIN_FECHA;
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return SIN_FECHA;
+  return `${formateador.format(fecha)} · ${formateadorHora.format(fecha)}`;
+}
