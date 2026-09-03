@@ -1,16 +1,20 @@
 import type { GebApiClient } from '@geb/api-client';
 import { ApiError } from '@geb/api-client';
-import { vi } from 'vitest';
+import { type Mock, vi } from 'vitest';
 
 /**
  * Cliente HTTP falso para las pruebas: se registran respuestas por
  * método + fragmento de URL. Sin red, sin axios.
+ *
+ * Cada método es la firma real de `GebApiClient` intersectada con `Mock`, para
+ * que el tipo siga siendo asignable a `GebApiClient` y a la vez exponga los
+ * helpers de vitest (`mockResolvedValue`, `mockRejectedValueOnce`, etc.).
  */
 export interface ClienteApiFalso extends GebApiClient {
-  get: ReturnType<typeof vi.fn>;
-  post: ReturnType<typeof vi.fn>;
-  put: ReturnType<typeof vi.fn>;
-  delete: ReturnType<typeof vi.fn>;
+  get: GebApiClient['get'] & Mock;
+  post: GebApiClient['post'] & Mock;
+  put: GebApiClient['put'] & Mock;
+  delete: GebApiClient['delete'] & Mock;
 }
 
 export function crearClienteApiFalso(overrides: Partial<GebApiClient> = {}): ClienteApiFalso {
@@ -21,7 +25,7 @@ export function crearClienteApiFalso(overrides: Partial<GebApiClient> = {}): Cli
     put: vi.fn(),
     delete: vi.fn(),
     ...overrides,
-  } as ClienteApiFalso;
+  } as unknown as ClienteApiFalso;
 }
 
 /** `ApiError` de prueba con un `status` y título dados. */
