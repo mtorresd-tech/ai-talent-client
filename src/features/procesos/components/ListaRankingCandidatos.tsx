@@ -3,13 +3,16 @@ import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { GebDataTable, GebEmptyState, type GebColumna } from '@geb/ui';
 import { EstadoError } from './EstadoError';
 import type { ApiError } from '@geb/api-client';
 import type { RespuestaPaginada } from '../../../shared/tipos/dominio';
 import type { CandidatoResumen } from '../api/candidatos';
+import type { EstadoCatalogo } from '../api/catalogos';
 import { esSeleccionablePrefiltro } from '../logica/candidato';
-import { colorEstado, etiquetaEstado } from '../logica/etiquetasEstado';
+import { resolverColorEstado, resolverEtiquetaEstado } from '../logica/etiquetasEstado';
+import { formatearFecha } from '../logica/formatoFecha';
 import { FilaCandidato } from './FilaCandidato';
 import { IndicadorAfinidad } from './IndicadorAfinidad';
 
@@ -28,6 +31,13 @@ export interface ListaRankingCandidatosProps {
    * columna de estado.
    */
   variante: 'selecta' | 'simple';
+  /**
+   * Catálogo de estados del backend para la etiqueta y el color del chip de
+   * estado (`variante="simple"`). Sin catálogo se usa el mapa local / Title Case.
+   */
+  catalogo?: EstadoCatalogo[] | null;
+  /** Copy del estado vacío. Por defecto, un texto genérico del paso. */
+  mensajeVacio?: string;
   estaSeleccionado: (id: string) => boolean;
   onAlternarSeleccion: (id: string) => void;
   onCambioPagina: (pagina: number, tamanoPagina: number) => void;
@@ -53,6 +63,8 @@ export function ListaRankingCandidatos({
   pagina,
   tamanoPagina,
   variante,
+  catalogo,
+  mensajeVacio,
   estaSeleccionado,
   onAlternarSeleccion,
   onCambioPagina,
@@ -117,12 +129,17 @@ export function ListaRankingCandidatos({
     titulo: 'Estado',
     ancho: '42%',
     render: (fila: CandidatoResumen) => (
-      <Chip
-        size="small"
-        color={colorEstado(fila.estado)}
-        label={etiquetaEstado(fila.estado)}
-        sx={{ fontSize: '0.625rem', height: 20, '& .MuiChip-label': { px: 1 } }}
-      />
+      <Box sx={{ minWidth: 0 }}>
+        <Chip
+          size="small"
+          color={resolverColorEstado(catalogo, fila.estado)}
+          label={resolverEtiquetaEstado(catalogo, fila.estado)}
+          sx={{ fontSize: '0.625rem', height: 20, '& .MuiChip-label': { px: 1 } }}
+        />
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+          desde {formatearFecha(fila.estadoDesde)}
+        </Typography>
+      </Box>
     ),
   };
 
@@ -195,7 +212,7 @@ export function ListaRankingCandidatos({
           totalFilas: respuesta?.meta?.total ?? 0,
           onCambioPagina,
         }}
-        estadoVacio={<GebEmptyState titulo="No hay candidatos en este paso" />}
+        estadoVacio={<GebEmptyState titulo={mensajeVacio ?? 'No hay candidatos en este paso'} />}
       />
     </Box>
   );

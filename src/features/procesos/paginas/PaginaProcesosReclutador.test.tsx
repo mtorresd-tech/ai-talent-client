@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import {
   crearClienteApiFalso,
@@ -9,6 +9,7 @@ import {
   type ClienteApiFalso,
 } from '../../../test/clienteApiFalso';
 import { establecerAnchoViewport } from '../../../test/matchMedia';
+import { limpiarCacheCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { PaginaProcesosReclutador } from './PaginaProcesosReclutador';
 
 const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | null }));
@@ -22,6 +23,12 @@ let cliente: ClienteApiFalso;
 /** Renderiza la página dentro de un router en memoria (usa `useSearchParams`/`useNavigate`). */
 function renderPagina(ui: ReactElement, rutaInicial = '/procesos') {
   return render(<MemoryRouter initialEntries={[rutaInicial]}>{ui}</MemoryRouter>);
+}
+
+/** Expone la ruta actual del router para verificar navegaciones. */
+function MostrarUbicacion() {
+  const ubicacion = useLocation();
+  return <div data-testid="ubicacion">{`${ubicacion.pathname}${ubicacion.search}`}</div>;
 }
 
 const vacante = {
@@ -103,6 +110,7 @@ const detalleCandidato = {
   },
   integraciones: [],
   identidadRevelada: true,
+  tipoCandidato: 'INTERNO',
   sincronizacionSfsf: {
     estado: 'PENDIENTE',
     ultimaSincronizacion: null,
@@ -111,7 +119,53 @@ const detalleCandidato = {
   },
 };
 
+const listaAnonimizacion = {
+  data: [
+    candidato('APP-20', 'Rocío Vega', 20, 'EN_REVISION_LIDER'),
+    candidato('APP-21', 'Iván Soto', 21, 'RECHAZADO_LIDER'),
+  ],
+  meta: { page: 1, pageSize: 5, total: 2, totalPages: 1 },
+};
+
+const detalleAnonimizacion = {
+  ...candidato('APP-20', 'Rocío Vega', 20, 'EN_REVISION_LIDER'),
+  desgloseAfinidad: null,
+  integraciones: [],
+  identidadRevelada: true,
+  tipoCandidato: 'EXTERNO',
+  sincronizacionSfsf: {
+    estado: 'SINCRONIZADO',
+    ultimaSincronizacion: null,
+    intentos: 0,
+    ultimoError: null,
+  },
+};
+
+const catalogoEstados = [
+  {
+    clave: 'EN_REVISION_LIDER',
+    etiqueta: 'En revisión del líder',
+    descripcion: 'El líder está revisando el informe incógnito.',
+    categoria: 'EN_CURSO',
+    terminal: false,
+    compuertaPendiente: 'LIDER',
+    compuertaEtiqueta: 'Revisión del líder',
+    transicionesPermitidas: [],
+  },
+  {
+    clave: 'RECHAZADO_LIDER',
+    etiqueta: 'Rechazado por el líder',
+    descripcion: 'El líder descartó al candidato.',
+    categoria: 'DESCARTADO',
+    terminal: true,
+    compuertaPendiente: null,
+    compuertaEtiqueta: null,
+    transicionesPermitidas: [],
+  },
+];
+
 beforeEach(() => {
+  limpiarCacheCatalogoEstados();
   cliente = crearClienteApiFalso();
   contenedorMock.cliente = cliente;
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -125,12 +179,15 @@ beforeEach(() => {
       });
     }
     if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+    if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
     if (url === '/vacantes/REQ-1/candidatos') {
       const estados = config?.params?.estado ?? [];
       if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
+      if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
       return Promise.resolve(listaCandidatos);
     }
     if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
+    if (url === '/candidatos/APP-20') return Promise.resolve(detalleAnonimizacion);
     return Promise.reject(new Error(`URL no mockeada: ${url}`));
   });
 });
@@ -309,5 +366,100 @@ describe('PaginaProcesosReclutador', () => {
       expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-1', expect.anything()),
     );
     expect(await screen.findByText('73%')).toBeInTheDocument();
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Anonimización', () => {
+  async function abrirAnonimizacion() {
+    const usuario = userEvent.setup();
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <MostrarUbicacion />
+      </>,
+    );
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+    await usuario.click(screen.getByRole('button', { name: /Anonimización/ }));
+    return usuario;
+  }
+
+  it('monta la lista de solo consulta y el panel de seguimiento, sin placeholder ni barra de acción', async () => {
+    await abrirAnonimizacion();
+
+    await waitFor(() => {
+      const llamada = cliente.get.mock.calls
+        .filter((c) => c[0] === '/vacantes/REQ-1/candidatos')
+        .at(-1);
+      expect(llamada?.[1].params.estado).toEqual([
+        'INFORME_INCOGNITO',
+        'EN_REVISION_LIDER',
+        'APROBADO_LIDER_PRUEBAS',
+        'RECHAZADO_LIDER',
+      ]);
+    });
+
+    expect(await screen.findByText('Rocío Vega')).toBeInTheDocument();
+    // Etiqueta del catálogo del backend, no Title Case del mapa local.
+    expect((await screen.findAllByText('En revisión del líder')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('En Revision Lider')).not.toBeInTheDocument();
+    // Solo consulta: sin checkboxes ni barra de envío a prefiltro.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+  });
+
+  it('al seleccionar un candidato consulta su detalle y muestra el seguimiento', async () => {
+    const usuario = await abrirAnonimizacion();
+    await screen.findByText('Rocío Vega');
+
+    await usuario.click(screen.getByText('Rocío Vega'));
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-20', expect.anything()),
+    );
+    expect(await screen.findByText('Externo')).toBeInTheDocument();
+    expect(screen.getByText(/envío al líder son automáticos/i)).toBeInTheDocument();
+    // No se consulta el prefiltro en este paso.
+    expect(cliente.get).not.toHaveBeenCalledWith('/candidatos/APP-20/prefiltro', expect.anything());
+  });
+
+  it('"Ver detalle completo" navega a la subpágina preservando vacante y paso', async () => {
+    const usuario = await abrirAnonimizacion();
+    await screen.findByText('Rocío Vega');
+    await usuario.click(screen.getByText('Rocío Vega'));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ver detalle completo' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos/candidato/APP-20?vacante=REQ-1&paso=ANONIMIZACION',
+    );
+  });
+
+  it('si el catálogo de estados falla, la pantalla no se bloquea y usa el respaldo local', async () => {
+    cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.reject(errorApi(500));
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
+        return Promise.resolve(listaCandidatos);
+      }
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+
+    await abrirAnonimizacion();
+
+    expect(await screen.findByText('Rocío Vega')).toBeInTheDocument();
+    // Sin catálogo, la etiqueta cae al respaldo Title Case.
+    expect((await screen.findAllByText('En Revision Lider')).length).toBeGreaterThan(0);
   });
 });

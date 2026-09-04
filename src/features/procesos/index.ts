@@ -14,11 +14,19 @@ export * from './api/serializacion';
 // Lógica de derivación de la vista de Procesos.
 export {
   CLAVE_ETAPA_RANKING,
+  CLAVE_ETAPA_ANONIMIZACION,
   ESTADOS_POR_ETAPA,
   estadosDeEtapa,
   esEtapaOperativa,
   esPasoSelecta,
+  esPasoAnonimizacion,
+  tipoPanelPaso,
+  type TipoPanelPaso,
 } from './logica/mapaEstadosPorEtapa';
+export {
+  describirEstadoRevisionLider,
+  type ResumenRevisionLider,
+} from './logica/seguimientoAnonimizacion';
 // Pipeline del reclutador: fases SAP y pasos internos.
 export {
   PASOS_PIPELINE,
@@ -60,6 +68,9 @@ export { InformacionPrefiltro } from './components/InformacionPrefiltro';
 export { LineaTiempoProceso } from './components/LineaTiempoProceso';
 export { EmbudoProceso } from './components/EmbudoProceso';
 export { SeguimientoTerceros } from './components/SeguimientoTerceros';
+export { DistintivoTipoCandidato } from './components/DistintivoTipoCandidato';
+export { EstadoSincronizacionSfsf } from './components/EstadoSincronizacionSfsf';
+export { SeguimientoAnonimizacion } from './components/SeguimientoAnonimizacion';
 
 // Hooks de datos y de interacción.
 export { usePeticion, type EstadoPeticion } from './hooks/usePeticion';

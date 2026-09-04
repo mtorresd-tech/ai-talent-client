@@ -70,6 +70,9 @@ export type Compuerta =
 
 export type Proveedor = 'BLUESITE' | 'COSINTE' | 'MEDILABORAL';
 
+/** Distingue a una persona candidata que ya trabaja en el grupo de una externa. */
+export type TipoCandidato = 'INTERNO' | 'EXTERNO';
+
 export type SubestadoIntegracion =
   | 'SOLICITUD_PENDIENTE'
   | 'SOLICITADA'
