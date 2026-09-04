@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { RespuestaPaginada } from '../../../shared/tipos/dominio';
 import type { CandidatoResumen } from '../api/candidatos';
 import type { EstadoCatalogo } from '../api/catalogos';
+import type { AtencionCandidato } from '../logica/seguimientoBluesite';
 import { ListaRankingCandidatos } from './ListaRankingCandidatos';
 
 const base = {
@@ -110,5 +112,48 @@ describe('ListaRankingCandidatos (variante simple)', () => {
     expect(
       screen.getByText('No hay candidatos en anonimización para esta vacante.'),
     ).toBeInTheDocument();
+  });
+
+  it('con atencionPorCandidato muestra el badge solo en la fila que requiere atención', async () => {
+    const usuario = userEvent.setup();
+    const atencionPorCandidato = new Map<string, AtencionCandidato>([
+      ['APP-1', { requiereAtencion: true, diasTranscurridos: 12 }],
+      ['APP-2', { requiereAtencion: false, diasTranscurridos: 1 }],
+    ]);
+
+    render(
+      <ListaRankingCandidatos
+        {...base}
+        variante="simple"
+        atencionPorCandidato={atencionPorCandidato}
+        respuesta={respuesta([
+          candidato('EN_PRUEBAS_BLUESITE', { jobApplicationId: 'APP-1' }),
+          candidato('EN_PRUEBAS_BLUESITE', {
+            jobApplicationId: 'APP-2',
+            alias: 'Candidato 2',
+            nombre: 'Beto Ruiz',
+          }),
+        ])}
+      />,
+    );
+
+    const badge = screen.getByText('Requiere atención');
+    expect(badge).toBeInTheDocument();
+
+    await usuario.hover(badge);
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('12 días transcurridos');
+  });
+
+  it('sin atencionPorCandidato (Selecta/Prefiltro/Anonimización) no muestra ningún badge', () => {
+    render(
+      <ListaRankingCandidatos
+        {...base}
+        variante="simple"
+        respuesta={respuesta([candidato('EN_REVISION_LIDER')])}
+      />,
+    );
+
+    expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
   });
 });
