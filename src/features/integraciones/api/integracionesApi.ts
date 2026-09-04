@@ -43,10 +43,13 @@ export function listarIntegracionesDeVacante(
   clienteApi: GebApiClient,
   jobRequisitionId: string,
   parametros: ParametrosListarIntegraciones = {},
+  // Shape local, no `OpcionesPeticion` de `procesos/api/vacantes.ts`: evita que
+  // este feature dependa de otro solo por un tipo de dos campos.
+  opciones: { signal?: AbortSignal } = {},
 ) {
   return clienteApi.get<RespuestaPaginada<SeguimientoIntegracion>>(
     `/vacantes/${jobRequisitionId}/integraciones`,
-    { params: parametros },
+    { params: parametros, signal: opciones.signal },
   );
 }
 

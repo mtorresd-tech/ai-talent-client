@@ -10,11 +10,13 @@ import { useVacantes } from '../hooks/useVacantes';
 import { useDetalleVacante } from '../hooks/useDetalleVacante';
 import { useCandidatosEtapa } from '../hooks/useCandidatosEtapa';
 import { useDetalleCandidato } from '../hooks/useDetalleCandidato';
+import { useIntegracionesEtapa } from '../hooks/useIntegracionesEtapa';
 import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
 import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
 import { esEtapaOperativa, tipoPanelPaso } from '../logica/mapaEstadosPorEtapa';
+import { mapaAtencionBluesite } from '../logica/seguimientoBluesite';
 import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
 import { abrirSuccessFactors } from '../logica/successFactors';
 import { TablaVacantes } from '../components/TablaVacantes';
@@ -28,6 +30,7 @@ import { ModalConfirmarPrefiltro } from '../components/ModalConfirmarPrefiltro';
 import { ResultadoSelecta } from '../components/ResultadoSelecta';
 import { ResultadoPrefiltro } from '../components/ResultadoPrefiltro';
 import { SeguimientoAnonimizacion } from '../components/SeguimientoAnonimizacion';
+import { SeguimientoBluesite } from '../components/SeguimientoBluesite';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
 /** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
@@ -38,8 +41,8 @@ const TAMANO_PAGINA_INICIAL = 5;
  * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
- * filtrados y la anonimización también son operativos (este último de solo
- * consulta); los demás pasos son navegables con un placeholder.
+ * filtrados, la anonimización y Bluesite también son operativos (estos dos
+ * últimos de solo consulta); los demás pasos son navegables con un placeholder.
  * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
@@ -149,13 +152,22 @@ export function PaginaProcesosReclutador() {
 
   const operativa = esEtapaOperativa(pasoClave);
   // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
-  // (listado de filtrados) o anonimización (seguimiento al líder).
+  // (listado de filtrados), anonimización (seguimiento al líder) o Bluesite
+  // (seguimiento de las pruebas psicotécnicas).
   const panel = tipoPanelPaso(pasoClave);
   const esSelecta = panel === 'SELECTA';
 
   const prefiltroCandidato = usePrefiltroCandidato(
     clienteApi,
     panel === 'PREFILTRO' ? candidatoId : null,
+  );
+  const integracionesEtapa = useIntegracionesEtapa(clienteApi, {
+    jobRequisitionId: vacanteId,
+    habilitado: panel === 'BLUESITE',
+  });
+  const atencionPorCandidato = useMemo(
+    () => mapaAtencionBluesite(integracionesEtapa.datos?.data ?? null),
+    [integracionesEtapa.datos],
   );
 
   const candidatosPagina: CandidatoResumen[] = useMemo(
@@ -208,8 +220,11 @@ export function PaginaProcesosReclutador() {
           mensajeVacio={
             panel === 'ANONIMIZACION'
               ? 'No hay candidatos en anonimización para esta vacante.'
-              : undefined
+              : panel === 'BLUESITE'
+                ? 'No hay candidatos en Bluesite para esta vacante.'
+                : undefined
           }
+          atencionPorCandidato={panel === 'BLUESITE' ? atencionPorCandidato : undefined}
           estaSeleccionado={seleccion.estaSeleccionado}
           onAlternarSeleccion={seleccion.alternar}
           onCambioPagina={cambioPaginaCandidatos}
@@ -245,6 +260,17 @@ export function PaginaProcesosReclutador() {
       case 'ANONIMIZACION':
         return (
           <SeguimientoAnonimizacion
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            catalogo={catalogo}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
+      case 'BLUESITE':
+        return (
+          <SeguimientoBluesite
             candidato={detalleCandidato.datos}
             cargando={detalleCandidato.cargando}
             error={detalleCandidato.error}

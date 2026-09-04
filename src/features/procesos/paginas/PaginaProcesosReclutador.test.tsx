@@ -141,6 +141,64 @@ const detalleAnonimizacion = {
   },
 };
 
+const listaBluesite = {
+  data: [
+    candidato('APP-30', 'Carla Ramos', 30, 'EN_PRUEBAS_BLUESITE'),
+    candidato('APP-31', 'Diego León', 31, 'RESULTADO_PRUEBAS_BLUESITE'),
+  ],
+  meta: { page: 1, pageSize: 5, total: 2, totalPages: 1 },
+};
+
+const detalleBluesite = {
+  ...candidato('APP-30', 'Carla Ramos', 30, 'EN_PRUEBAS_BLUESITE'),
+  desgloseAfinidad: null,
+  integraciones: [
+    {
+      proveedor: 'BLUESITE',
+      subestado: 'EN_CURSO',
+      idExterno: null,
+      fechaSolicitud: '2026-01-05',
+      fechaResultado: null,
+      fechaExpiracion: null,
+      intentos: 0,
+      resultado: null,
+    },
+  ],
+  identidadRevelada: true,
+  tipoCandidato: 'EXTERNO',
+  sincronizacionSfsf: {
+    estado: 'SINCRONIZADO',
+    ultimaSincronizacion: null,
+    intentos: 0,
+    ultimoError: null,
+  },
+};
+
+const integracionesBluesite = {
+  data: [
+    {
+      jobApplicationId: 'APP-30',
+      alias: 'Candidato 30',
+      nombre: 'Carla Ramos',
+      integraciones: [
+        {
+          proveedor: 'BLUESITE',
+          subestado: 'ERROR',
+          idExterno: null,
+          fechaSolicitud: '2026-01-01',
+          fechaResultado: null,
+          fechaExpiracion: null,
+          intentos: 3,
+          resultado: null,
+          diasTranscurridos: 12,
+          requiereAtencion: true,
+        },
+      ],
+    },
+  ],
+  meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+};
+
 const catalogoEstados = [
   {
     clave: 'EN_REVISION_LIDER',
@@ -184,10 +242,13 @@ beforeEach(() => {
       const estados = config?.params?.estado ?? [];
       if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
       if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
+      if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
       return Promise.resolve(listaCandidatos);
     }
+    if (url === '/vacantes/REQ-1/integraciones') return Promise.resolve(integracionesBluesite);
     if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
     if (url === '/candidatos/APP-20') return Promise.resolve(detalleAnonimizacion);
+    if (url === '/candidatos/APP-30') return Promise.resolve(detalleBluesite);
     return Promise.reject(new Error(`URL no mockeada: ${url}`));
   });
 });
@@ -259,7 +320,7 @@ describe('PaginaProcesosReclutador', () => {
     await usuario.click(screen.getByText('Analista de Datos'));
     await screen.findByText('Ana Pérez');
 
-    await usuario.click(screen.getByRole('button', { name: /Bluesite/ }));
+    await usuario.click(screen.getByRole('button', { name: /Cosinte/ }));
 
     expect(await screen.findByText(/construcción/i)).toBeInTheDocument();
   });
@@ -461,5 +522,120 @@ describe('PaginaProcesosReclutador · paso Anonimización', () => {
     expect(await screen.findByText('Rocío Vega')).toBeInTheDocument();
     // Sin catálogo, la etiqueta cae al respaldo Title Case.
     expect((await screen.findAllByText('En Revision Lider')).length).toBeGreaterThan(0);
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Bluesite', () => {
+  async function abrirBluesite() {
+    const usuario = userEvent.setup();
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <MostrarUbicacion />
+      </>,
+    );
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+    await usuario.click(screen.getByRole('button', { name: /Bluesite/ }));
+    return usuario;
+  }
+
+  it('monta la lista de solo consulta y el panel de seguimiento, sin placeholder ni barra de acción', async () => {
+    await abrirBluesite();
+
+    await waitFor(() => {
+      const llamada = cliente.get.mock.calls
+        .filter((c) => c[0] === '/vacantes/REQ-1/candidatos')
+        .at(-1);
+      expect(llamada?.[1].params.estado).toEqual([
+        'EN_PRUEBAS_BLUESITE',
+        'RESULTADO_PRUEBAS_BLUESITE',
+        'APROBO_PRUEBAS_BLUESITE',
+        'DESCARTADO_PRUEBAS_BLUESITE',
+      ]);
+    });
+
+    expect(await screen.findByText('Carla Ramos')).toBeInTheDocument();
+    // Solo consulta: sin checkboxes ni barra de envío a prefiltro.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+  });
+
+  it('al seleccionar un candidato consulta su detalle y muestra el seguimiento con la tarjeta de resultado', async () => {
+    const usuario = await abrirBluesite();
+    await screen.findByText('Carla Ramos');
+
+    await usuario.click(screen.getByText('Carla Ramos'));
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-30', expect.anything()),
+    );
+    expect(await screen.findByText('Externo')).toBeInTheDocument();
+    // Sin resultado estructurado todavía (integración `EN_CURSO`, resultado null).
+    expect(screen.getByText('Sin resultado estructurado')).toBeInTheDocument();
+  });
+
+  it('"Ver detalle completo" navega a la subpágina preservando vacante y paso', async () => {
+    const usuario = await abrirBluesite();
+    await screen.findByText('Carla Ramos');
+    await usuario.click(screen.getByText('Carla Ramos'));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ver detalle completo' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos/candidato/APP-30?vacante=REQ-1&paso=BLUESITE',
+    );
+  });
+
+  it('cruza con listarIntegracionesDeVacante y muestra el badge solo en la fila que requiere atención', async () => {
+    await abrirBluesite();
+    await screen.findByText('Carla Ramos');
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith(
+        '/vacantes/REQ-1/integraciones',
+        expect.objectContaining({ params: expect.objectContaining({ proveedor: 'BLUESITE' }) }),
+      ),
+    );
+
+    const filaConAtencion = screen.getByText('Carla Ramos').closest('tr');
+    const filaSinAtencion = screen.getByText('Diego León').closest('tr');
+    expect(filaConAtencion).toBeTruthy();
+    expect(filaSinAtencion).toBeTruthy();
+    expect(
+      within(filaConAtencion as HTMLElement).getByText('Requiere atención'),
+    ).toBeInTheDocument();
+    expect(
+      within(filaSinAtencion as HTMLElement).queryByText('Requiere atención'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('si falla la carga de integraciones, la lista se pinta igual sin ningún badge', async () => {
+    cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
+        return Promise.resolve(listaCandidatos);
+      }
+      if (url === '/vacantes/REQ-1/integraciones') return Promise.reject(errorApi(500));
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+
+    await abrirBluesite();
+
+    expect(await screen.findByText('Carla Ramos')).toBeInTheDocument();
+    expect(screen.getByText('Diego León')).toBeInTheDocument();
+    expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
   });
 });

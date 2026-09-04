@@ -13,6 +13,7 @@ import type { EstadoCatalogo } from '../api/catalogos';
 import { esSeleccionablePrefiltro } from '../logica/candidato';
 import { resolverColorEstado, resolverEtiquetaEstado } from '../logica/etiquetasEstado';
 import { formatearFecha } from '../logica/formatoFecha';
+import type { AtencionCandidato } from '../logica/seguimientoBluesite';
 import { FilaCandidato } from './FilaCandidato';
 import { IndicadorAfinidad } from './IndicadorAfinidad';
 
@@ -38,6 +39,8 @@ export interface ListaRankingCandidatosProps {
   catalogo?: EstadoCatalogo[] | null;
   /** Copy del estado vacío. Por defecto, un texto genérico del paso. */
   mensajeVacio?: string;
+  /** Cruce por `jobApplicationId` para el badge "Requiere atención" (paso Bluesite). */
+  atencionPorCandidato?: Map<string, AtencionCandidato>;
   estaSeleccionado: (id: string) => boolean;
   onAlternarSeleccion: (id: string) => void;
   onCambioPagina: (pagina: number, tamanoPagina: number) => void;
@@ -65,6 +68,7 @@ export function ListaRankingCandidatos({
   variante,
   catalogo,
   mensajeVacio,
+  atencionPorCandidato,
   estaSeleccionado,
   onAlternarSeleccion,
   onCambioPagina,
@@ -128,19 +132,37 @@ export function ListaRankingCandidatos({
     campo: 'estado',
     titulo: 'Estado',
     ancho: '42%',
-    render: (fila: CandidatoResumen) => (
-      <Box sx={{ minWidth: 0 }}>
-        <Chip
-          size="small"
-          color={resolverColorEstado(catalogo, fila.estado)}
-          label={resolverEtiquetaEstado(catalogo, fila.estado)}
-          sx={{ fontSize: '0.625rem', height: 20, '& .MuiChip-label': { px: 1 } }}
-        />
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
-          desde {formatearFecha(fila.estadoDesde)}
-        </Typography>
-      </Box>
-    ),
+    render: (fila: CandidatoResumen) => {
+      const atencion = atencionPorCandidato?.get(fila.jobApplicationId);
+      return (
+        <Box sx={{ minWidth: 0 }}>
+          <Chip
+            size="small"
+            color={resolverColorEstado(catalogo, fila.estado)}
+            label={resolverEtiquetaEstado(catalogo, fila.estado)}
+            sx={{ fontSize: '0.625rem', height: 20, '& .MuiChip-label': { px: 1 } }}
+          />
+          <Typography
+            variant="caption"
+            sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}
+          >
+            desde {formatearFecha(fila.estadoDesde)}
+          </Typography>
+          {atencion?.requiereAtencion && (
+            <Tooltip
+              title={`La integración con Bluesite tiene un error, expiró, o superó la fecha estimada de entrega sin resultado. ${atencion.diasTranscurridos} días transcurridos.`}
+            >
+              <Chip
+                size="small"
+                color="warning"
+                label="Requiere atención"
+                sx={{ fontSize: '0.625rem', height: 20, mt: 0.5, '& .MuiChip-label': { px: 1 } }}
+              />
+            </Tooltip>
+          )}
+        </Box>
+      );
+    },
   };
 
   const columnas = comoColumnas([
