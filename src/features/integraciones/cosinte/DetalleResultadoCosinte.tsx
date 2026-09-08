@@ -1,4 +1,6 @@
 import Box from '@mui/material/Box';
+import LinearProgress from '@mui/material/LinearProgress';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { parsearResultadoCosinte } from './parseoResultado';
 
@@ -18,7 +20,7 @@ export function DetalleResultadoCosinte({ resultado }: DetalleResultadoCosintePr
   }
 
   return (
-    <Box>
+    <Stack spacing={0.75}>
       <Typography variant="body2">
         Estado del estudio: <strong>{datos.estado}</strong>
       </Typography>
@@ -28,10 +30,24 @@ export function DetalleResultadoCosinte({ resultado }: DetalleResultadoCosintePr
         </Typography>
       )}
       {datos.tiempos && (
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-          {datos.tiempos.diasRestantes} de {datos.tiempos.diasHabiles} días hábiles restantes
-        </Typography>
+        <Box>
+          <Typography variant="body2" sx={{ mb: 0.5 }}>
+            {Math.round(datos.tiempos.progreso * 100)}% completado
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={datos.tiempos.progreso * 100}
+            aria-label="Avance del estudio de seguridad"
+            sx={{ height: 8, borderRadius: 4 }}
+          />
+          <Typography
+            variant="caption"
+            sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}
+          >
+            {datos.tiempos.diasRestantes} de {datos.tiempos.diasHabiles} días hábiles restantes
+          </Typography>
+        </Box>
       )}
-    </Box>
+    </Stack>
   );
 }
