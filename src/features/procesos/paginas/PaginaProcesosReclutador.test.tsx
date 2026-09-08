@@ -199,6 +199,70 @@ const integracionesBluesite = {
   meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
 };
 
+const listaCosinte = {
+  data: [
+    candidato('APP-40', 'Elena Ríos', 40, 'EN_PRUEBAS_COSINTE'),
+    candidato('APP-41', 'Felipe Ortiz', 41, 'RESULTADO_PRUEBAS_COSINTE'),
+  ],
+  meta: { page: 1, pageSize: 5, total: 2, totalPages: 1 },
+};
+
+const detalleCosinte = {
+  ...candidato('APP-40', 'Elena Ríos', 40, 'EN_PRUEBAS_COSINTE'),
+  desgloseAfinidad: null,
+  integraciones: [
+    {
+      proveedor: 'COSINTE',
+      subestado: 'EN_CURSO',
+      idExterno: null,
+      fechaSolicitud: '2026-01-05',
+      fechaResultado: null,
+      fechaExpiracion: null,
+      intentos: 0,
+      resultado: {
+        tipo: 'COSINTE',
+        estado: 'En proceso',
+        nivelRiesgo: 'Bajo',
+        fechaSolicitud: '2026-01-05',
+        tiempos: { diasHabiles: 8, diasRestantes: 4, progreso: 0.5 },
+      },
+    },
+  ],
+  identidadRevelada: true,
+  tipoCandidato: 'EXTERNO',
+  sincronizacionSfsf: {
+    estado: 'SINCRONIZADO',
+    ultimaSincronizacion: null,
+    intentos: 0,
+    ultimoError: null,
+  },
+};
+
+const integracionesCosinte = {
+  data: [
+    {
+      jobApplicationId: 'APP-40',
+      alias: 'Candidato 40',
+      nombre: 'Elena Ríos',
+      integraciones: [
+        {
+          proveedor: 'COSINTE',
+          subestado: 'ERROR',
+          idExterno: null,
+          fechaSolicitud: '2026-01-01',
+          fechaResultado: null,
+          fechaExpiracion: null,
+          intentos: 3,
+          resultado: null,
+          diasTranscurridos: 9,
+          requiereAtencion: true,
+        },
+      ],
+    },
+  ],
+  meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+};
+
 const catalogoEstados = [
   {
     clave: 'EN_REVISION_LIDER',
@@ -229,28 +293,36 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-  cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
-    if (url === '/vacantes') {
-      return Promise.resolve({
-        data: [vacante],
-        meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
-      });
-    }
-    if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
-    if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
-    if (url === '/vacantes/REQ-1/candidatos') {
-      const estados = config?.params?.estado ?? [];
-      if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
-      if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
-      if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
-      return Promise.resolve(listaCandidatos);
-    }
-    if (url === '/vacantes/REQ-1/integraciones') return Promise.resolve(integracionesBluesite);
-    if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
-    if (url === '/candidatos/APP-20') return Promise.resolve(detalleAnonimizacion);
-    if (url === '/candidatos/APP-30') return Promise.resolve(detalleBluesite);
-    return Promise.reject(new Error(`URL no mockeada: ${url}`));
-  });
+  cliente.get.mockImplementation(
+    (url: string, config?: { params?: { estado?: string[]; proveedor?: string } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
+        if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
+        if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
+        if (estados.includes('EN_PRUEBAS_COSINTE')) return Promise.resolve(listaCosinte);
+        return Promise.resolve(listaCandidatos);
+      }
+      if (url === '/vacantes/REQ-1/integraciones') {
+        return Promise.resolve(
+          config?.params?.proveedor === 'COSINTE' ? integracionesCosinte : integracionesBluesite,
+        );
+      }
+      if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
+      if (url === '/candidatos/APP-20') return Promise.resolve(detalleAnonimizacion);
+      if (url === '/candidatos/APP-30') return Promise.resolve(detalleBluesite);
+      if (url === '/candidatos/APP-40') return Promise.resolve(detalleCosinte);
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    },
+  );
 });
 
 describe('PaginaProcesosReclutador', () => {
@@ -320,7 +392,7 @@ describe('PaginaProcesosReclutador', () => {
     await usuario.click(screen.getByText('Analista de Datos'));
     await screen.findByText('Ana Pérez');
 
-    await usuario.click(screen.getByRole('button', { name: /Cosinte/ }));
+    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
 
     expect(await screen.findByText(/construcción/i)).toBeInTheDocument();
   });
@@ -636,6 +708,125 @@ describe('PaginaProcesosReclutador · paso Bluesite', () => {
 
     expect(await screen.findByText('Carla Ramos')).toBeInTheDocument();
     expect(screen.getByText('Diego León')).toBeInTheDocument();
+    expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Cosinte', () => {
+  async function abrirCosinte() {
+    const usuario = userEvent.setup();
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <MostrarUbicacion />
+      </>,
+    );
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+    await usuario.click(screen.getByRole('button', { name: /Cosinte/ }));
+    return usuario;
+  }
+
+  it('monta la lista de solo consulta y el panel de seguimiento, sin placeholder ni barra de acción', async () => {
+    await abrirCosinte();
+
+    await waitFor(() => {
+      const llamada = cliente.get.mock.calls
+        .filter((c) => c[0] === '/vacantes/REQ-1/candidatos')
+        .at(-1);
+      expect(llamada?.[1].params.estado).toEqual([
+        'EN_PRUEBAS_COSINTE',
+        'RESULTADO_PRUEBAS_COSINTE',
+        'APROBO_PRUEBAS_COSINTE',
+        'DESCARTADO_PRUEBAS_COSINTE',
+        'BLOQUEADO_COSINTE_6M',
+      ]);
+    });
+
+    expect(await screen.findByText('Elena Ríos')).toBeInTheDocument();
+    // Solo consulta: sin checkboxes ni barra de envío a prefiltro.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+  });
+
+  it('al seleccionar un candidato consulta su detalle y muestra el seguimiento con la tarjeta de resultado', async () => {
+    const usuario = await abrirCosinte();
+    await screen.findByText('Elena Ríos');
+
+    await usuario.click(screen.getByText('Elena Ríos'));
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-40', expect.anything()),
+    );
+    expect(await screen.findByText('Externo')).toBeInTheDocument();
+    expect(screen.getByText('50% completado')).toBeInTheDocument();
+  });
+
+  it('"Ver detalle completo" navega a la subpágina preservando vacante y paso', async () => {
+    const usuario = await abrirCosinte();
+    await screen.findByText('Elena Ríos');
+    await usuario.click(screen.getByText('Elena Ríos'));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ver detalle completo' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos/candidato/APP-40?vacante=REQ-1&paso=COSINTE',
+    );
+  });
+
+  it('cruza con listarIntegracionesDeVacante y muestra el badge solo en la fila que requiere atención', async () => {
+    const usuario = await abrirCosinte();
+    await screen.findByText('Elena Ríos');
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith(
+        '/vacantes/REQ-1/integraciones',
+        expect.objectContaining({ params: expect.objectContaining({ proveedor: 'COSINTE' }) }),
+      ),
+    );
+
+    const filaConAtencion = screen.getByText('Elena Ríos').closest('tr');
+    const filaSinAtencion = screen.getByText('Felipe Ortiz').closest('tr');
+    expect(filaConAtencion).toBeTruthy();
+    expect(filaSinAtencion).toBeTruthy();
+
+    const badge = within(filaConAtencion as HTMLElement).getByText('Requiere atención');
+    expect(badge).toBeInTheDocument();
+    expect(
+      within(filaSinAtencion as HTMLElement).queryByText('Requiere atención'),
+    ).not.toBeInTheDocument();
+
+    await usuario.hover(badge);
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('La integración con Cosinte tiene un error');
+  });
+
+  it('si falla la carga de integraciones, la lista se pinta igual sin ningún badge', async () => {
+    cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('EN_PRUEBAS_COSINTE')) return Promise.resolve(listaCosinte);
+        return Promise.resolve(listaCandidatos);
+      }
+      if (url === '/vacantes/REQ-1/integraciones') return Promise.reject(errorApi(500));
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+
+    await abrirCosinte();
+
+    expect(await screen.findByText('Elena Ríos')).toBeInTheDocument();
+    expect(screen.getByText('Felipe Ortiz')).toBeInTheDocument();
     expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
   });
 });
