@@ -10,6 +10,7 @@ import type { EstadoProceso } from '../../../shared/tipos/dominio';
  *     telefónico / preseleccionadas).
  *   - `ANONIMIZACION` (informe incógnito enviado al líder y su revisión).
  *   - `BLUESITE` (pruebas psicotécnicas con el proveedor Bluesite).
+ *   - `COSINTE` (estudio de seguridad con el proveedor Cosinte).
  * Cualquier otra clave devuelve `[]` y su contenido queda como placeholder
  * "en construcción".
  */
@@ -22,6 +23,9 @@ export const CLAVE_ETAPA_ANONIMIZACION = 'ANONIMIZACION';
 
 /** Clave del paso de pruebas psicotécnicas con Bluesite (solo consulta). */
 export const CLAVE_ETAPA_BLUESITE = 'BLUESITE';
+
+/** Clave del paso de estudio de seguridad con Cosinte (solo consulta). */
+export const CLAVE_ETAPA_COSINTE = 'COSINTE';
 
 /** Traducción `clave de paso → estados`. Configurable y acotada a los pasos operativos. */
 export const ESTADOS_POR_ETAPA: Record<string, EstadoProceso[]> = {
@@ -42,6 +46,17 @@ export const ESTADOS_POR_ETAPA: Record<string, EstadoProceso[]> = {
     'RESULTADO_PRUEBAS_BLUESITE',
     'APROBO_PRUEBAS_BLUESITE',
     'DESCARTADO_PRUEBAS_BLUESITE',
+  ],
+  // `BLOQUEADO_COSINTE_6M` se incluye (a diferencia de `ERROR_INTEGRACION`/
+  // `EXPIRADO_SLA_PROVEEDOR`, compartidos con otros proveedores): su `clave`
+  // identifica a Cosinte explícitamente y describe una regla de negocio
+  // exclusiva de este proveedor (repetición antes de 6 meses).
+  [CLAVE_ETAPA_COSINTE]: [
+    'EN_PRUEBAS_COSINTE',
+    'RESULTADO_PRUEBAS_COSINTE',
+    'APROBO_PRUEBAS_COSINTE',
+    'DESCARTADO_PRUEBAS_COSINTE',
+    'BLOQUEADO_COSINTE_6M',
   ],
 };
 
@@ -71,21 +86,34 @@ export function esPasoBluesite(clave: string | null | undefined): boolean {
   return clave === CLAVE_ETAPA_BLUESITE;
 }
 
+/** `true` solo para el paso de estudio de seguridad con Cosinte (lista de solo consulta + resultado del proveedor). */
+export function esPasoCosinte(clave: string | null | undefined): boolean {
+  return clave === CLAVE_ETAPA_COSINTE;
+}
+
 /**
  * Tipo de panel derecho que corresponde montar para un paso operativo:
  *   - `SELECTA`: resultado de afinidad Selecta.
  *   - `PREFILTRO`: información del prefiltro telefónico (listado de filtrados).
  *   - `ANONIMIZACION`: seguimiento del envío e informe incógnito al líder.
  *   - `BLUESITE`: seguimiento de las pruebas psicotécnicas y su resultado.
+ *   - `COSINTE`: seguimiento del estudio de seguridad y su resultado.
  *   - `null`: paso sin panel (no operativo).
  */
-export type TipoPanelPaso = 'SELECTA' | 'PREFILTRO' | 'ANONIMIZACION' | 'BLUESITE' | null;
+export type TipoPanelPaso =
+  | 'SELECTA'
+  | 'PREFILTRO'
+  | 'ANONIMIZACION'
+  | 'BLUESITE'
+  | 'COSINTE'
+  | null;
 
 /** Discrimina qué panel derecho corresponde a un paso del pipeline. */
 export function tipoPanelPaso(clave: string | null | undefined): TipoPanelPaso {
   if (esPasoSelecta(clave)) return 'SELECTA';
   if (esPasoAnonimizacion(clave)) return 'ANONIMIZACION';
   if (esPasoBluesite(clave)) return 'BLUESITE';
+  if (esPasoCosinte(clave)) return 'COSINTE';
   if (esEtapaOperativa(clave)) return 'PREFILTRO';
   return null;
 }
