@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { EstadoIntegracion } from '../api/integracionesApi';
 import { formatearFechaHora } from '../logica/formatoFecha';
+import { nombreProveedor } from '../logica/nombreProveedor';
 import { BadgeSubestado } from './BadgeSubestado';
 
 export interface TarjetaProveedorProps {
@@ -11,12 +12,6 @@ export interface TarjetaProveedorProps {
   /** Resumen del resultado ya parseado; si se omite, la tarjeta solo muestra subestado y fechas. */
   children?: ReactNode;
 }
-
-const NOMBRE_PROVEEDOR: Record<string, string> = {
-  BLUESITE: 'Bluesite',
-  COSINTE: 'Cosinte',
-  MEDILABORAL: 'Medilaboral',
-};
 
 function Fecha({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
   if (!valor) return null;
@@ -38,7 +33,7 @@ function Fecha({ etiqueta, valor }: { etiqueta: string; valor: string | null }) 
  * resultado / expiración y un espacio para el resumen del resultado.
  */
 export function TarjetaProveedor({ integracion, children }: TarjetaProveedorProps) {
-  const nombre = NOMBRE_PROVEEDOR[integracion.proveedor] ?? integracion.proveedor;
+  const nombre = nombreProveedor(integracion.proveedor);
 
   return (
     <Box
