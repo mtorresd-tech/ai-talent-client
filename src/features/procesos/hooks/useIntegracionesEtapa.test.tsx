@@ -6,11 +6,17 @@ import { useIntegracionesEtapa } from './useIntegracionesEtapa';
 const respuestaVacia = { data: [], meta: { page: 1, pageSize: 100, total: 0, totalPages: 0 } };
 
 describe('useIntegracionesEtapa', () => {
-  it('no llama al backend cuando no está habilitado (paso distinto de Bluesite)', () => {
+  it('no llama al backend cuando no está habilitado (paso distinto de Bluesite/Cosinte)', () => {
     const cliente = crearClienteApiFalso();
     cliente.get.mockResolvedValue(respuestaVacia);
 
-    renderHook(() => useIntegracionesEtapa(cliente, { jobRequisitionId: 'v1', habilitado: false }));
+    renderHook(() =>
+      useIntegracionesEtapa(cliente, {
+        jobRequisitionId: 'v1',
+        proveedor: 'BLUESITE',
+        habilitado: false,
+      }),
+    );
 
     expect(cliente.get).not.toHaveBeenCalled();
   });
@@ -19,7 +25,13 @@ describe('useIntegracionesEtapa', () => {
     const cliente = crearClienteApiFalso();
     cliente.get.mockResolvedValue(respuestaVacia);
 
-    renderHook(() => useIntegracionesEtapa(cliente, { jobRequisitionId: null, habilitado: true }));
+    renderHook(() =>
+      useIntegracionesEtapa(cliente, {
+        jobRequisitionId: null,
+        proveedor: 'BLUESITE',
+        habilitado: true,
+      }),
+    );
 
     expect(cliente.get).not.toHaveBeenCalled();
   });
@@ -29,7 +41,11 @@ describe('useIntegracionesEtapa', () => {
     cliente.get.mockResolvedValue(respuestaVacia);
 
     const { result } = renderHook(() =>
-      useIntegracionesEtapa(cliente, { jobRequisitionId: 'v1', habilitado: true }),
+      useIntegracionesEtapa(cliente, {
+        jobRequisitionId: 'v1',
+        proveedor: 'BLUESITE',
+        habilitado: true,
+      }),
     );
 
     await waitFor(() => expect(cliente.get).toHaveBeenCalled());
@@ -39,12 +55,34 @@ describe('useIntegracionesEtapa', () => {
     await waitFor(() => expect(result.current.datos).toEqual(respuestaVacia));
   });
 
+  it('consulta las integraciones de Cosinte de la vacante cuando el proveedor es COSINTE', async () => {
+    const cliente = crearClienteApiFalso();
+    cliente.get.mockResolvedValue(respuestaVacia);
+
+    renderHook(() =>
+      useIntegracionesEtapa(cliente, {
+        jobRequisitionId: 'v1',
+        proveedor: 'COSINTE',
+        habilitado: true,
+      }),
+    );
+
+    await waitFor(() => expect(cliente.get).toHaveBeenCalled());
+    const [url, config] = cliente.get.mock.calls[0];
+    expect(url).toBe('/vacantes/v1/integraciones');
+    expect(config.params).toMatchObject({ proveedor: 'COSINTE', pageSize: 100 });
+  });
+
   it('no expone la lista de candidatos si la petición falla: el consumidor solo lee `datos`', async () => {
     const cliente = crearClienteApiFalso();
     cliente.get.mockRejectedValue(new Error('fallo de red'));
 
     const { result } = renderHook(() =>
-      useIntegracionesEtapa(cliente, { jobRequisitionId: 'v1', habilitado: true }),
+      useIntegracionesEtapa(cliente, {
+        jobRequisitionId: 'v1',
+        proveedor: 'BLUESITE',
+        habilitado: true,
+      }),
     );
 
     await waitFor(() => expect(result.current.error).not.toBeNull());
