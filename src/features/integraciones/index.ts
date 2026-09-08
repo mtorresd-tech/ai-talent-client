@@ -9,6 +9,7 @@ export {
   type ColorSubestado,
 } from './logica/etiquetasSubestado';
 export { formatearFechaHora, SIN_FECHA } from './logica/formatoFecha';
+export { nombreProveedor } from './logica/nombreProveedor';
 
 export { BadgeSubestado, type BadgeSubestadoProps } from './components/BadgeSubestado';
 export { TarjetaProveedor, type TarjetaProveedorProps } from './components/TarjetaProveedor';
