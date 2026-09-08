@@ -1,21 +1,17 @@
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Link from '@mui/material/Link';
-import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 import { GebEmptyState } from '@geb/ui';
 import type { ApiError } from '@geb/api-client';
 import type { CandidatoDetalle } from '../api/candidatos';
 import type { EstadoCatalogo } from '../api/catalogos';
 import { nombreCandidato } from '../logica/candidato';
-import { resolverColorEstado, resolverEtiquetaEstado } from '../logica/etiquetasEstado';
-import { formatearFecha } from '../logica/formatoFecha';
 import { describirEstadoRevisionLider } from '../logica/seguimientoAnonimizacion';
+import { EncabezadoSeguimientoPaso } from './EncabezadoSeguimientoPaso';
 import { EstadoError } from './EstadoError';
-import { DistintivoTipoCandidato } from './DistintivoTipoCandidato';
 import { EstadoSincronizacionSfsf } from './EstadoSincronizacionSfsf';
+import { ResumenEstadoPaso } from './ResumenEstadoPaso';
 
 export interface SeguimientoAnonimizacionProps {
   candidato: CandidatoDetalle | null;
@@ -71,31 +67,18 @@ export function SeguimientoAnonimizacion({
         minWidth: 0,
       }}
     >
-      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-        {nombreCandidato(candidato)}
-      </Typography>
-      <Stack direction="row" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
-        <Chip
-          size="small"
-          color={resolverColorEstado(catalogo, candidato.estado)}
-          label={resolverEtiquetaEstado(catalogo, candidato.estado)}
-        />
-        <DistintivoTipoCandidato tipo={candidato.tipoCandidato} />
-      </Stack>
+      <EncabezadoSeguimientoPaso
+        nombre={nombreCandidato(candidato)}
+        estado={candidato.estado}
+        catalogo={catalogo}
+        tipoCandidato={candidato.tipoCandidato}
+      />
 
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-          {resumen.titulo}
-        </Typography>
-        {resumen.descripcion && (
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            {resumen.descripcion}
-          </Typography>
-        )}
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-          En este estado desde {formatearFecha(candidato.estadoDesde)}
-        </Typography>
-      </Box>
+      <ResumenEstadoPaso
+        titulo={resumen.titulo}
+        descripcion={resumen.descripcion}
+        estadoDesde={candidato.estadoDesde}
+      />
 
       <Box sx={{ mt: 2 }}>
         <EstadoSincronizacionSfsf sincronizacion={candidato.sincronizacionSfsf} />
