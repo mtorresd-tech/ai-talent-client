@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { SeguimientoIntegracion } from '../../integraciones';
 import type { EstadoCatalogo } from '../api/catalogos';
-import { describirEstadoBluesite, mapaAtencionBluesite } from './seguimientoBluesite';
+import { describirEstadoBluesite } from './seguimientoBluesite';
 
 describe('describirEstadoBluesite', () => {
   it('describe el inicio de las pruebas psicotécnicas', () => {
@@ -51,56 +50,5 @@ describe('describirEstadoBluesite', () => {
     const { titulo, descripcion } = describirEstadoBluesite('ERROR_INTEGRACION');
     expect(titulo).toBe('Error Integracion');
     expect(descripcion).toBe('');
-  });
-});
-
-function integracion(
-  jobApplicationId: string,
-  requiereAtencion: boolean,
-  diasTranscurridos = 3,
-  proveedor: 'BLUESITE' | 'COSINTE' = 'BLUESITE',
-): SeguimientoIntegracion {
-  return {
-    jobApplicationId,
-    alias: `Candidato ${jobApplicationId}`,
-    nombre: null,
-    integraciones: [
-      {
-        proveedor,
-        subestado: 'EN_CURSO',
-        idExterno: null,
-        fechaSolicitud: null,
-        fechaResultado: null,
-        fechaExpiracion: null,
-        intentos: 0,
-        resultado: null,
-        diasTranscurridos,
-        requiereAtencion,
-      },
-    ],
-  };
-}
-
-describe('mapaAtencionBluesite', () => {
-  it('arma el mapa con los candidatos que requieren o no atención', () => {
-    const mapa = mapaAtencionBluesite([
-      integracion('APP-1', true, 12),
-      integracion('APP-2', false, 1),
-    ]);
-
-    expect(mapa.get('APP-1')).toEqual({ requiereAtencion: true, diasTranscurridos: 12 });
-    expect(mapa.get('APP-2')).toEqual({ requiereAtencion: false, diasTranscurridos: 1 });
-    expect(mapa.size).toBe(2);
-  });
-
-  it('no genera entrada para un candidato sin integración Bluesite en su arreglo', () => {
-    const mapa = mapaAtencionBluesite([integracion('APP-3', true, 5, 'COSINTE')]);
-    expect(mapa.has('APP-3')).toBe(false);
-    expect(mapa.size).toBe(0);
-  });
-
-  it('con integraciones null devuelve un mapa vacío sin lanzar', () => {
-    const mapa = mapaAtencionBluesite(null);
-    expect(mapa.size).toBe(0);
   });
 });
