@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GebAppLayout, type GebNavItem } from '@geb/ui';
 import { useAuth } from '@geb/auth';
-import { ROL_ADMINISTRADOR, ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
 
 /**
  * Navegación real de ambos portales: Reclutador ve Procesos/Métricas/
@@ -14,7 +14,6 @@ const navegacion: GebNavItem[] = [
   { etiqueta: 'Procesos', ruta: '/procesos', roles: [ROL_RECLUTADOR, ROL_LIDER] },
   { etiqueta: 'Métricas', ruta: '/metricas', roles: [ROL_RECLUTADOR] },
   { etiqueta: 'Notificaciones', ruta: '/notificaciones', roles: [ROL_RECLUTADOR, ROL_LIDER] },
-  { etiqueta: 'Configuración', ruta: '/configuracion', roles: [ROL_ADMINISTRADOR] },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
