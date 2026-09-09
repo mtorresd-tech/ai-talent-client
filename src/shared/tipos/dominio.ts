@@ -96,7 +96,6 @@ export type Portal = 'RECLUTADOR' | 'LIDER';
  */
 export const ROL_RECLUTADOR = 'RECLUTADOR';
 export const ROL_LIDER = 'LIDER_VACANTE';
-export const ROL_ADMINISTRADOR = 'ADMINISTRADOR';
 
 export interface PaginacionMeta {
   page: number;

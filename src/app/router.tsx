@@ -5,8 +5,7 @@ import { PaginaInicioSesion } from '../features/auth';
 import { PaginaProcesos, PaginaDetalleCandidato } from '../features/procesos';
 import { PaginaMetricas } from '../features/metricas';
 import { PaginaNotificaciones } from '../features/notificaciones';
-import { PaginaConfiguracion } from '../features/configuracion';
-import { ROL_ADMINISTRADOR, ROL_RECLUTADOR } from '../shared/tipos/dominio';
+import { ROL_RECLUTADOR } from '../shared/tipos/dominio';
 
 export function AppRouter() {
   const { estado } = useAuth();
@@ -40,14 +39,6 @@ export function AppRouter() {
           }
         />
         <Route path="/notificaciones" element={<PaginaNotificaciones />} />
-        <Route
-          path="/configuracion"
-          element={
-            <RequireRole roles={[ROL_ADMINISTRADOR]}>
-              <PaginaConfiguracion />
-            </RequireRole>
-          }
-        />
       </Routes>
     </AppLayout>
   );

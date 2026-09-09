@@ -80,8 +80,7 @@ src/
 │   ├── procesos/       # vacantes, candidatos, pipeline, decisiones — ambos portales
 │   ├── integraciones/  # estado por proveedor: bluesite/, cosinte/, medilaboral/, ssff/
 │   ├── metricas/        # portal reclutador (placeholder)
-│   ├── notificaciones/  # ambos portales (placeholder)
-│   └── configuracion/   # políticas de compuertas, rol administrador
+│   └── notificaciones/  # ambos portales (placeholder)
 └── shared/         # tipos de dominio y cliente HTTP compartidos — sin lógica de negocio
 ```
 

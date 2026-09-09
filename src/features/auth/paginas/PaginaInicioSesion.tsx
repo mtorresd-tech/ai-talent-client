@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '@geb/auth';
 import { useDevAuth } from '../../../shared/auth/DevAuthContext';
-import { ROL_ADMINISTRADOR, ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
 
 /**
  * TODO: pantalla de login real — @geb/ui no tiene un componente de login
@@ -22,7 +22,6 @@ import { ROL_ADMINISTRADOR, ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/ti
 const ROLES_DISPONIBLES = [
   { valor: ROL_RECLUTADOR, etiqueta: 'Reclutador' },
   { valor: ROL_LIDER, etiqueta: 'Líder de área' },
-  { valor: ROL_ADMINISTRADOR, etiqueta: 'Administrador' },
 ] as const;
 
 export function PaginaInicioSesion() {
