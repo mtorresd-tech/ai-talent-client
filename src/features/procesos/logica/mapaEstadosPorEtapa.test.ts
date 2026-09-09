@@ -4,6 +4,7 @@ import {
   esEtapaOperativa,
   esPasoAnonimizacion,
   esPasoBluesite,
+  esPasoCosinte,
   esPasoSelecta,
   estadosDeEtapa,
   tipoPanelPaso,
@@ -23,7 +24,7 @@ describe('estadosDeEtapa', () => {
   });
 
   it('devuelve [] para una clave no mapeada', () => {
-    expect(estadosDeEtapa('COSINTE')).toEqual([]);
+    expect(estadosDeEtapa('MEDILABORAL')).toEqual([]);
     expect(estadosDeEtapa(null)).toEqual([]);
   });
 
@@ -44,15 +45,26 @@ describe('estadosDeEtapa', () => {
       'DESCARTADO_PRUEBAS_BLUESITE',
     ]);
   });
+
+  it('traduce el paso de Cosinte a los estados del estudio de seguridad', () => {
+    expect(estadosDeEtapa('COSINTE')).toEqual([
+      'EN_PRUEBAS_COSINTE',
+      'RESULTADO_PRUEBAS_COSINTE',
+      'APROBO_PRUEBAS_COSINTE',
+      'DESCARTADO_PRUEBAS_COSINTE',
+      'BLOQUEADO_COSINTE_6M',
+    ]);
+  });
 });
 
 describe('esEtapaOperativa', () => {
-  it('Selecta, el listado de filtrados, la anonimización y Bluesite son operativos; el resto no', () => {
+  it('Selecta, el listado de filtrados, la anonimización, Bluesite y Cosinte son operativos; el resto no', () => {
     expect(esEtapaOperativa(CLAVE_ETAPA_RANKING)).toBe(true);
     expect(esEtapaOperativa('LISTA_FILTRADOS')).toBe(true);
     expect(esEtapaOperativa('ANONIMIZACION')).toBe(true);
     expect(esEtapaOperativa('BLUESITE')).toBe(true);
-    expect(esEtapaOperativa('COSINTE')).toBe(false);
+    expect(esEtapaOperativa('COSINTE')).toBe(true);
+    expect(esEtapaOperativa('MEDILABORAL')).toBe(false);
   });
 });
 
@@ -83,13 +95,23 @@ describe('esPasoBluesite', () => {
   });
 });
 
+describe('esPasoCosinte', () => {
+  it('solo es cierto para el paso de Cosinte', () => {
+    expect(esPasoCosinte('COSINTE')).toBe(true);
+    expect(esPasoCosinte('BLUESITE')).toBe(false);
+    expect(esPasoCosinte('ANONIMIZACION')).toBe(false);
+    expect(esPasoCosinte(null)).toBe(false);
+  });
+});
+
 describe('tipoPanelPaso', () => {
   it('discrimina el panel derecho por tipo de paso', () => {
     expect(tipoPanelPaso('SELECTA')).toBe('SELECTA');
     expect(tipoPanelPaso('LISTA_FILTRADOS')).toBe('PREFILTRO');
     expect(tipoPanelPaso('ANONIMIZACION')).toBe('ANONIMIZACION');
     expect(tipoPanelPaso('BLUESITE')).toBe('BLUESITE');
-    expect(tipoPanelPaso('COSINTE')).toBeNull();
+    expect(tipoPanelPaso('COSINTE')).toBe('COSINTE');
+    expect(tipoPanelPaso('MEDILABORAL')).toBeNull();
     expect(tipoPanelPaso(null)).toBeNull();
   });
 });

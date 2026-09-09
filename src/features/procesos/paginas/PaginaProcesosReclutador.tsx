@@ -16,9 +16,10 @@ import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
 import { esEtapaOperativa, tipoPanelPaso } from '../logica/mapaEstadosPorEtapa';
-import { mapaAtencionBluesite } from '../logica/seguimientoBluesite';
+import { mapaAtencionProveedor } from '../logica/atencionIntegraciones';
 import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
 import { abrirSuccessFactors } from '../logica/successFactors';
+import { nombreProveedor } from '../../integraciones';
 import { TablaVacantes } from '../components/TablaVacantes';
 import { BarraSeleccionVacante } from '../components/BarraSeleccionVacante';
 import { TarjetaDetalleVacante } from '../components/TarjetaDetalleVacante';
@@ -31,6 +32,7 @@ import { ResultadoSelecta } from '../components/ResultadoSelecta';
 import { ResultadoPrefiltro } from '../components/ResultadoPrefiltro';
 import { SeguimientoAnonimizacion } from '../components/SeguimientoAnonimizacion';
 import { SeguimientoBluesite } from '../components/SeguimientoBluesite';
+import { SeguimientoCosinte } from '../components/SeguimientoCosinte';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
 /** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
@@ -41,8 +43,9 @@ const TAMANO_PAGINA_INICIAL = 5;
  * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
- * filtrados, la anonimización y Bluesite también son operativos (estos dos
- * últimos de solo consulta); los demás pasos son navegables con un placeholder.
+ * filtrados, la anonimización, Bluesite y Cosinte también son operativos
+ * (estos tres últimos de solo consulta); los demás pasos son navegables con
+ * un placeholder.
  * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
@@ -152,8 +155,8 @@ export function PaginaProcesosReclutador() {
 
   const operativa = esEtapaOperativa(pasoClave);
   // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
-  // (listado de filtrados), anonimización (seguimiento al líder) o Bluesite
-  // (seguimiento de las pruebas psicotécnicas).
+  // (listado de filtrados), anonimización (seguimiento al líder), Bluesite
+  // (pruebas psicotécnicas) o Cosinte (estudio de seguridad).
   const panel = tipoPanelPaso(pasoClave);
   const esSelecta = panel === 'SELECTA';
 
@@ -161,13 +164,17 @@ export function PaginaProcesosReclutador() {
     clienteApi,
     panel === 'PREFILTRO' ? candidatoId : null,
   );
+  // Solo un panel está activo a la vez: una única instancia del hook alcanza,
+  // el proveedor consultado cambia con el panel activo (Bluesite o Cosinte).
+  const proveedorIntegracion = panel === 'COSINTE' ? 'COSINTE' : 'BLUESITE';
   const integracionesEtapa = useIntegracionesEtapa(clienteApi, {
     jobRequisitionId: vacanteId,
-    habilitado: panel === 'BLUESITE',
+    proveedor: proveedorIntegracion,
+    habilitado: panel === 'BLUESITE' || panel === 'COSINTE',
   });
   const atencionPorCandidato = useMemo(
-    () => mapaAtencionBluesite(integracionesEtapa.datos?.data ?? null),
-    [integracionesEtapa.datos],
+    () => mapaAtencionProveedor(integracionesEtapa.datos?.data ?? null, proveedorIntegracion),
+    [integracionesEtapa.datos, proveedorIntegracion],
   );
 
   const candidatosPagina: CandidatoResumen[] = useMemo(
@@ -222,9 +229,18 @@ export function PaginaProcesosReclutador() {
               ? 'No hay candidatos en anonimización para esta vacante.'
               : panel === 'BLUESITE'
                 ? 'No hay candidatos en Bluesite para esta vacante.'
-                : undefined
+                : panel === 'COSINTE'
+                  ? 'No hay candidatos en Cosinte para esta vacante.'
+                  : undefined
           }
-          atencionPorCandidato={panel === 'BLUESITE' ? atencionPorCandidato : undefined}
+          atencionPorCandidato={
+            panel === 'BLUESITE' || panel === 'COSINTE' ? atencionPorCandidato : undefined
+          }
+          nombreProveedorAtencion={
+            panel === 'BLUESITE' || panel === 'COSINTE'
+              ? nombreProveedor(proveedorIntegracion)
+              : undefined
+          }
           estaSeleccionado={seleccion.estaSeleccionado}
           onAlternarSeleccion={seleccion.alternar}
           onCambioPagina={cambioPaginaCandidatos}
@@ -271,6 +287,17 @@ export function PaginaProcesosReclutador() {
       case 'BLUESITE':
         return (
           <SeguimientoBluesite
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            catalogo={catalogo}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
+      case 'COSINTE':
+        return (
+          <SeguimientoCosinte
             candidato={detalleCandidato.datos}
             cargando={detalleCandidato.cargando}
             error={detalleCandidato.error}

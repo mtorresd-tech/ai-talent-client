@@ -7,8 +7,7 @@ export interface PasoEnConstruccionProps {
 
 /**
  * Placeholder navegable para los pasos del pipeline que aún no operan
- * (Anonimización, Bluesite, Cosinte, Medilaboral, Oferta). No carga datos ni
- * expone acciones.
+ * (Medilaboral, Oferta). No carga datos ni expone acciones.
  */
 export function PasoEnConstruccion({ nombre }: PasoEnConstruccionProps) {
   return (

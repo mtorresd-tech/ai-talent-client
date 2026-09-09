@@ -14,7 +14,7 @@ describe('useCandidatosEtapa', () => {
     renderHook(() =>
       useCandidatosEtapa(cliente, {
         jobRequisitionId: 'v1',
-        etapaClave: 'COSINTE',
+        etapaClave: 'MEDILABORAL',
         pagina: 0,
         tamanoPagina: 20,
       }),

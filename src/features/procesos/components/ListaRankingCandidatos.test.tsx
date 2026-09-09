@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { RespuestaPaginada } from '../../../shared/tipos/dominio';
 import type { CandidatoResumen } from '../api/candidatos';
 import type { EstadoCatalogo } from '../api/catalogos';
-import type { AtencionCandidato } from '../logica/seguimientoBluesite';
+import type { AtencionCandidato } from '../logica/atencionIntegraciones';
 import { ListaRankingCandidatos } from './ListaRankingCandidatos';
 
 const base = {
@@ -114,7 +114,7 @@ describe('ListaRankingCandidatos (variante simple)', () => {
     ).toBeInTheDocument();
   });
 
-  it('con atencionPorCandidato muestra el badge solo en la fila que requiere atención', async () => {
+  it('con atencionPorCandidato y nombreProveedorAtencion="Bluesite" muestra el badge con ese proveedor en el tooltip', async () => {
     const usuario = userEvent.setup();
     const atencionPorCandidato = new Map<string, AtencionCandidato>([
       ['APP-1', { requiereAtencion: true, diasTranscurridos: 12 }],
@@ -126,6 +126,7 @@ describe('ListaRankingCandidatos (variante simple)', () => {
         {...base}
         variante="simple"
         atencionPorCandidato={atencionPorCandidato}
+        nombreProveedorAtencion="Bluesite"
         respuesta={respuesta([
           candidato('EN_PRUEBAS_BLUESITE', { jobApplicationId: 'APP-1' }),
           candidato('EN_PRUEBAS_BLUESITE', {
@@ -142,7 +143,49 @@ describe('ListaRankingCandidatos (variante simple)', () => {
 
     await usuario.hover(badge);
     const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('La integración con Bluesite tiene un error');
     expect(tooltip).toHaveTextContent('12 días transcurridos');
+  });
+
+  it('con nombreProveedorAtencion="Cosinte" el tooltip menciona ese proveedor', async () => {
+    const usuario = userEvent.setup();
+    const atencionPorCandidato = new Map<string, AtencionCandidato>([
+      ['APP-1', { requiereAtencion: true, diasTranscurridos: 7 }],
+    ]);
+
+    render(
+      <ListaRankingCandidatos
+        {...base}
+        variante="simple"
+        atencionPorCandidato={atencionPorCandidato}
+        nombreProveedorAtencion="Cosinte"
+        respuesta={respuesta([candidato('EN_PRUEBAS_COSINTE', { jobApplicationId: 'APP-1' })])}
+      />,
+    );
+
+    await usuario.hover(screen.getByText('Requiere atención'));
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('La integración con Cosinte tiene un error');
+  });
+
+  it('con atencionPorCandidato sin nombreProveedorAtencion cae a "el proveedor" genérico', async () => {
+    const usuario = userEvent.setup();
+    const atencionPorCandidato = new Map<string, AtencionCandidato>([
+      ['APP-1', { requiereAtencion: true, diasTranscurridos: 4 }],
+    ]);
+
+    render(
+      <ListaRankingCandidatos
+        {...base}
+        variante="simple"
+        atencionPorCandidato={atencionPorCandidato}
+        respuesta={respuesta([candidato('EN_PRUEBAS_BLUESITE', { jobApplicationId: 'APP-1' })])}
+      />,
+    );
+
+    await usuario.hover(screen.getByText('Requiere atención'));
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('La integración con el proveedor tiene un error');
   });
 
   it('sin atencionPorCandidato (Selecta/Prefiltro/Anonimización) no muestra ningún badge', () => {
