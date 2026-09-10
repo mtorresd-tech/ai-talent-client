@@ -5,8 +5,11 @@ import {
   esPasoAnonimizacion,
   esPasoBluesite,
   esPasoCosinte,
+  esPasoMedilaboral,
   esPasoSelecta,
   estadosDeEtapa,
+  panelTieneIntegracionProveedor,
+  proveedorDePanel,
   tipoPanelPaso,
 } from './mapaEstadosPorEtapa';
 
@@ -24,7 +27,7 @@ describe('estadosDeEtapa', () => {
   });
 
   it('devuelve [] para una clave no mapeada', () => {
-    expect(estadosDeEtapa('MEDILABORAL')).toEqual([]);
+    expect(estadosDeEtapa('CLAVE_NO_MAPEADA')).toEqual([]);
     expect(estadosDeEtapa(null)).toEqual([]);
   });
 
@@ -55,16 +58,26 @@ describe('estadosDeEtapa', () => {
       'BLOQUEADO_COSINTE_6M',
     ]);
   });
+
+  it('traduce el paso de Medilaboral a los estados de los exámenes médicos', () => {
+    expect(estadosDeEtapa('MEDILABORAL')).toEqual([
+      'EN_PRUEBAS_MEDILABORAL',
+      'RESULTADO_PRUEBAS_MEDILABORAL',
+      'APROBO_PRUEBAS_MEDILABORAL',
+      'DESCARTADO_PRUEBAS_MEDILABORAL',
+    ]);
+  });
 });
 
 describe('esEtapaOperativa', () => {
-  it('Selecta, el listado de filtrados, la anonimización, Bluesite y Cosinte son operativos; el resto no', () => {
+  it('Selecta, el listado de filtrados, la anonimización, Bluesite, Cosinte y Medilaboral son operativos; el resto no', () => {
     expect(esEtapaOperativa(CLAVE_ETAPA_RANKING)).toBe(true);
     expect(esEtapaOperativa('LISTA_FILTRADOS')).toBe(true);
     expect(esEtapaOperativa('ANONIMIZACION')).toBe(true);
     expect(esEtapaOperativa('BLUESITE')).toBe(true);
     expect(esEtapaOperativa('COSINTE')).toBe(true);
-    expect(esEtapaOperativa('MEDILABORAL')).toBe(false);
+    expect(esEtapaOperativa('MEDILABORAL')).toBe(true);
+    expect(esEtapaOperativa('CLAVE_NO_MAPEADA')).toBe(false);
   });
 });
 
@@ -104,6 +117,15 @@ describe('esPasoCosinte', () => {
   });
 });
 
+describe('esPasoMedilaboral', () => {
+  it('solo es cierto para el paso de Medilaboral', () => {
+    expect(esPasoMedilaboral('MEDILABORAL')).toBe(true);
+    expect(esPasoMedilaboral('COSINTE')).toBe(false);
+    expect(esPasoMedilaboral('BLUESITE')).toBe(false);
+    expect(esPasoMedilaboral(null)).toBe(false);
+  });
+});
+
 describe('tipoPanelPaso', () => {
   it('discrimina el panel derecho por tipo de paso', () => {
     expect(tipoPanelPaso('SELECTA')).toBe('SELECTA');
@@ -111,7 +133,27 @@ describe('tipoPanelPaso', () => {
     expect(tipoPanelPaso('ANONIMIZACION')).toBe('ANONIMIZACION');
     expect(tipoPanelPaso('BLUESITE')).toBe('BLUESITE');
     expect(tipoPanelPaso('COSINTE')).toBe('COSINTE');
-    expect(tipoPanelPaso('MEDILABORAL')).toBeNull();
+    expect(tipoPanelPaso('MEDILABORAL')).toBe('MEDILABORAL');
     expect(tipoPanelPaso(null)).toBeNull();
+  });
+});
+
+describe('panelTieneIntegracionProveedor', () => {
+  it('es cierto para Bluesite, Cosinte y Medilaboral; falso para el resto', () => {
+    expect(panelTieneIntegracionProveedor('BLUESITE')).toBe(true);
+    expect(panelTieneIntegracionProveedor('COSINTE')).toBe(true);
+    expect(panelTieneIntegracionProveedor('MEDILABORAL')).toBe(true);
+    expect(panelTieneIntegracionProveedor('SELECTA')).toBe(false);
+    expect(panelTieneIntegracionProveedor('ANONIMIZACION')).toBe(false);
+    expect(panelTieneIntegracionProveedor(null)).toBe(false);
+  });
+});
+
+describe('proveedorDePanel', () => {
+  it('resuelve el proveedor de cada panel de integración; el resto queda indefinido', () => {
+    expect(proveedorDePanel('MEDILABORAL')).toBe('MEDILABORAL');
+    expect(proveedorDePanel('BLUESITE')).toBe('BLUESITE');
+    expect(proveedorDePanel('COSINTE')).toBe('COSINTE');
+    expect(proveedorDePanel(null)).toBeUndefined();
   });
 });

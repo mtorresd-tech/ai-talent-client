@@ -16,7 +16,7 @@ export interface EstadoIntegracion {
   fechaResultado: string | null;
   fechaExpiracion: string | null;
   intentos: number;
-  /** Shape según proveedor — Medilaboral no entrega dato estructurado, solo el PDF. */
+  /** Shape según proveedor — cada uno tiene su propio `resultado` estructurado. */
   resultado: ResultadoBluesite | ResultadoCosinte | ResultadoMedilaboral | null;
 }
 

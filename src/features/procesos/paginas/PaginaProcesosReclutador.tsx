@@ -15,7 +15,13 @@ import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
 import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
-import { esEtapaOperativa, tipoPanelPaso } from '../logica/mapaEstadosPorEtapa';
+import {
+  esEtapaOperativa,
+  panelTieneIntegracionProveedor,
+  proveedorDePanel,
+  tipoPanelPaso,
+  type TipoPanelPaso,
+} from '../logica/mapaEstadosPorEtapa';
 import { mapaAtencionProveedor } from '../logica/atencionIntegraciones';
 import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
 import { abrirSuccessFactors } from '../logica/successFactors';
@@ -33,7 +39,16 @@ import { ResultadoPrefiltro } from '../components/ResultadoPrefiltro';
 import { SeguimientoAnonimizacion } from '../components/SeguimientoAnonimizacion';
 import { SeguimientoBluesite } from '../components/SeguimientoBluesite';
 import { SeguimientoCosinte } from '../components/SeguimientoCosinte';
+import { SeguimientoMedilaboral } from '../components/SeguimientoMedilaboral';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
+
+/** Mensaje de "sin candidatos" por panel operativo; los paneles sin entrada usan el mensaje genérico de la tabla. */
+const MENSAJE_VACIO_POR_PANEL: Partial<Record<NonNullable<TipoPanelPaso>, string>> = {
+  ANONIMIZACION: 'No hay candidatos en anonimización para esta vacante.',
+  BLUESITE: 'No hay candidatos en Bluesite para esta vacante.',
+  COSINTE: 'No hay candidatos en Cosinte para esta vacante.',
+  MEDILABORAL: 'No hay candidatos en Medilaboral para esta vacante.',
+};
 
 /** Tamaño de página inicial de las dos tablas; el reclutador puede ajustarlo. */
 const TAMANO_PAGINA_INICIAL = 5;
@@ -43,9 +58,9 @@ const TAMANO_PAGINA_INICIAL = 5;
  * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
- * filtrados, la anonimización, Bluesite y Cosinte también son operativos
- * (estos tres últimos de solo consulta); los demás pasos son navegables con
- * un placeholder.
+ * filtrados, la anonimización, Bluesite, Cosinte y Medilaboral también son
+ * operativos (estos cuatro últimos de solo consulta); los demás pasos son
+ * navegables con un placeholder.
  * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
@@ -156,7 +171,8 @@ export function PaginaProcesosReclutador() {
   const operativa = esEtapaOperativa(pasoClave);
   // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
   // (listado de filtrados), anonimización (seguimiento al líder), Bluesite
-  // (pruebas psicotécnicas) o Cosinte (estudio de seguridad).
+  // (pruebas psicotécnicas), Cosinte (estudio de seguridad) o Medilaboral
+  // (exámenes médicos).
   const panel = tipoPanelPaso(pasoClave);
   const esSelecta = panel === 'SELECTA';
 
@@ -165,12 +181,12 @@ export function PaginaProcesosReclutador() {
     panel === 'PREFILTRO' ? candidatoId : null,
   );
   // Solo un panel está activo a la vez: una única instancia del hook alcanza,
-  // el proveedor consultado cambia con el panel activo (Bluesite o Cosinte).
-  const proveedorIntegracion = panel === 'COSINTE' ? 'COSINTE' : 'BLUESITE';
+  // el proveedor consultado cambia con el panel activo (Bluesite, Cosinte o Medilaboral).
+  const proveedorIntegracion = useMemo(() => proveedorDePanel(panel) ?? 'BLUESITE', [panel]);
   const integracionesEtapa = useIntegracionesEtapa(clienteApi, {
     jobRequisitionId: vacanteId,
     proveedor: proveedorIntegracion,
-    habilitado: panel === 'BLUESITE' || panel === 'COSINTE',
+    habilitado: panelTieneIntegracionProveedor(panel),
   });
   const atencionPorCandidato = useMemo(
     () => mapaAtencionProveedor(integracionesEtapa.datos?.data ?? null, proveedorIntegracion),
@@ -224,20 +240,12 @@ export function PaginaProcesosReclutador() {
           tamanoPagina={tamanoPaginaCandidatos}
           variante={esSelecta ? 'selecta' : 'simple'}
           catalogo={catalogo}
-          mensajeVacio={
-            panel === 'ANONIMIZACION'
-              ? 'No hay candidatos en anonimización para esta vacante.'
-              : panel === 'BLUESITE'
-                ? 'No hay candidatos en Bluesite para esta vacante.'
-                : panel === 'COSINTE'
-                  ? 'No hay candidatos en Cosinte para esta vacante.'
-                  : undefined
-          }
+          mensajeVacio={panel ? MENSAJE_VACIO_POR_PANEL[panel] : undefined}
           atencionPorCandidato={
-            panel === 'BLUESITE' || panel === 'COSINTE' ? atencionPorCandidato : undefined
+            panelTieneIntegracionProveedor(panel) ? atencionPorCandidato : undefined
           }
           nombreProveedorAtencion={
-            panel === 'BLUESITE' || panel === 'COSINTE'
+            panelTieneIntegracionProveedor(panel)
               ? nombreProveedor(proveedorIntegracion)
               : undefined
           }
@@ -298,6 +306,17 @@ export function PaginaProcesosReclutador() {
       case 'COSINTE':
         return (
           <SeguimientoCosinte
+            candidato={detalleCandidato.datos}
+            cargando={detalleCandidato.cargando}
+            error={detalleCandidato.error}
+            onReintentar={detalleCandidato.recargar}
+            catalogo={catalogo}
+            onVerDetalleCompleto={onVerDetalleCompleto}
+          />
+        );
+      case 'MEDILABORAL':
+        return (
+          <SeguimientoMedilaboral
             candidato={detalleCandidato.datos}
             cargando={detalleCandidato.cargando}
             error={detalleCandidato.error}

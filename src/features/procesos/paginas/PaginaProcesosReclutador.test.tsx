@@ -263,6 +263,73 @@ const integracionesCosinte = {
   meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
 };
 
+const listaMedilaboral = {
+  data: [
+    candidato('APP-50', 'Gustavo Peña', 50, 'EN_PRUEBAS_MEDILABORAL'),
+    candidato('APP-51', 'Helena Cruz', 51, 'RESULTADO_PRUEBAS_MEDILABORAL'),
+  ],
+  meta: { page: 1, pageSize: 5, total: 2, totalPages: 1 },
+};
+
+const detalleMedilaboral = {
+  ...candidato('APP-50', 'Gustavo Peña', 50, 'EN_PRUEBAS_MEDILABORAL'),
+  desgloseAfinidad: null,
+  integraciones: [
+    {
+      proveedor: 'MEDILABORAL',
+      subestado: 'EN_CURSO',
+      idExterno: null,
+      fechaSolicitud: '2026-08-01',
+      fechaResultado: null,
+      fechaExpiracion: null,
+      intentos: 0,
+      resultado: {
+        tipo: 'MEDILABORAL',
+        idOrdenServicio: 'OS-71614',
+        fechaCita: null,
+        sede: 'Sede Centro',
+        modalidad: 'CITA_PREVIA',
+        conceptoAptitud: null,
+        observaciones: null,
+        fechaConcepto: null,
+      },
+    },
+  ],
+  identidadRevelada: true,
+  tipoCandidato: 'EXTERNO',
+  sincronizacionSfsf: {
+    estado: 'SINCRONIZADO',
+    ultimaSincronizacion: null,
+    intentos: 0,
+    ultimoError: null,
+  },
+};
+
+const integracionesMedilaboral = {
+  data: [
+    {
+      jobApplicationId: 'APP-50',
+      alias: 'Candidato 50',
+      nombre: 'Gustavo Peña',
+      integraciones: [
+        {
+          proveedor: 'MEDILABORAL',
+          subestado: 'ERROR',
+          idExterno: null,
+          fechaSolicitud: '2026-08-01',
+          fechaResultado: null,
+          fechaExpiracion: null,
+          intentos: 3,
+          resultado: null,
+          diasTranscurridos: 5,
+          requiereAtencion: true,
+        },
+      ],
+    },
+  ],
+  meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+};
+
 const catalogoEstados = [
   {
     clave: 'EN_REVISION_LIDER',
@@ -309,17 +376,21 @@ beforeEach(() => {
         if (estados.includes('INFORME_INCOGNITO')) return Promise.resolve(listaAnonimizacion);
         if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
         if (estados.includes('EN_PRUEBAS_COSINTE')) return Promise.resolve(listaCosinte);
+        if (estados.includes('EN_PRUEBAS_MEDILABORAL')) return Promise.resolve(listaMedilaboral);
         return Promise.resolve(listaCandidatos);
       }
       if (url === '/vacantes/REQ-1/integraciones') {
-        return Promise.resolve(
-          config?.params?.proveedor === 'COSINTE' ? integracionesCosinte : integracionesBluesite,
-        );
+        if (config?.params?.proveedor === 'COSINTE') return Promise.resolve(integracionesCosinte);
+        if (config?.params?.proveedor === 'MEDILABORAL') {
+          return Promise.resolve(integracionesMedilaboral);
+        }
+        return Promise.resolve(integracionesBluesite);
       }
       if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
       if (url === '/candidatos/APP-20') return Promise.resolve(detalleAnonimizacion);
       if (url === '/candidatos/APP-30') return Promise.resolve(detalleBluesite);
       if (url === '/candidatos/APP-40') return Promise.resolve(detalleCosinte);
+      if (url === '/candidatos/APP-50') return Promise.resolve(detalleMedilaboral);
       return Promise.reject(new Error(`URL no mockeada: ${url}`));
     },
   );
@@ -392,7 +463,7 @@ describe('PaginaProcesosReclutador', () => {
     await usuario.click(screen.getByText('Analista de Datos'));
     await screen.findByText('Ana Pérez');
 
-    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
 
     expect(await screen.findByText(/construcción/i)).toBeInTheDocument();
   });
@@ -827,6 +898,121 @@ describe('PaginaProcesosReclutador · paso Cosinte', () => {
 
     expect(await screen.findByText('Elena Ríos')).toBeInTheDocument();
     expect(screen.getByText('Felipe Ortiz')).toBeInTheDocument();
+    expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Medilaboral', () => {
+  async function abrirMedilaboral() {
+    const usuario = userEvent.setup();
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <MostrarUbicacion />
+      </>,
+    );
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    return usuario;
+  }
+
+  it('monta la lista de solo consulta y el panel de seguimiento, sin placeholder ni barra de acción', async () => {
+    await abrirMedilaboral();
+
+    await waitFor(() => {
+      const llamada = cliente.get.mock.calls
+        .filter((c) => c[0] === '/vacantes/REQ-1/candidatos')
+        .at(-1);
+      expect(llamada?.[1].params.estado).toEqual([
+        'EN_PRUEBAS_MEDILABORAL',
+        'RESULTADO_PRUEBAS_MEDILABORAL',
+        'APROBO_PRUEBAS_MEDILABORAL',
+        'DESCARTADO_PRUEBAS_MEDILABORAL',
+      ]);
+    });
+
+    expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
+    // Solo consulta: sin checkboxes ni barra de envío a prefiltro.
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+  });
+
+  it('al seleccionar un candidato con examen agendado sin concepto aún muestra los datos disponibles, sin chip', async () => {
+    const usuario = await abrirMedilaboral();
+    await screen.findByText('Gustavo Peña');
+
+    await usuario.click(screen.getByText('Gustavo Peña'));
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-50', expect.anything()),
+    );
+    expect(await screen.findByText('Externo')).toBeInTheDocument();
+    expect(screen.getByText('Sede: Sede Centro')).toBeInTheDocument();
+    expect(screen.queryByText(/Observaciones:/)).not.toBeInTheDocument();
+  });
+
+  it('"Ver detalle completo" navega a la subpágina preservando vacante y paso', async () => {
+    const usuario = await abrirMedilaboral();
+    await screen.findByText('Gustavo Peña');
+    await usuario.click(screen.getByText('Gustavo Peña'));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Ver detalle completo' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos/candidato/APP-50?vacante=REQ-1&paso=MEDILABORAL',
+    );
+  });
+
+  it('cruza con listarIntegracionesDeVacante y muestra el badge solo en la fila que requiere atención', async () => {
+    await abrirMedilaboral();
+    await screen.findByText('Gustavo Peña');
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith(
+        '/vacantes/REQ-1/integraciones',
+        expect.objectContaining({ params: expect.objectContaining({ proveedor: 'MEDILABORAL' }) }),
+      ),
+    );
+
+    const filaConAtencion = screen.getByText('Gustavo Peña').closest('tr');
+    const filaSinAtencion = screen.getByText('Helena Cruz').closest('tr');
+    expect(filaConAtencion).toBeTruthy();
+    expect(filaSinAtencion).toBeTruthy();
+    expect(
+      within(filaConAtencion as HTMLElement).getByText('Requiere atención'),
+    ).toBeInTheDocument();
+    expect(
+      within(filaSinAtencion as HTMLElement).queryByText('Requiere atención'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('si falla la carga de integraciones, la lista se pinta igual sin ningún badge', async () => {
+    cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('EN_PRUEBAS_MEDILABORAL')) return Promise.resolve(listaMedilaboral);
+        return Promise.resolve(listaCandidatos);
+      }
+      if (url === '/vacantes/REQ-1/integraciones') return Promise.reject(errorApi(500));
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+
+    await abrirMedilaboral();
+
+    expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
+    expect(screen.getByText('Helena Cruz')).toBeInTheDocument();
     expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
   });
 });
