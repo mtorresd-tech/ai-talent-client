@@ -10,6 +10,7 @@ import { useVacantes } from '../hooks/useVacantes';
 import { useDetalleVacante } from '../hooks/useDetalleVacante';
 import { useCandidatosEtapa } from '../hooks/useCandidatosEtapa';
 import { useDetalleCandidato } from '../hooks/useDetalleCandidato';
+import { useCandidatoFinal } from '../hooks/useCandidatoFinal';
 import { useIntegracionesEtapa } from '../hooks/useIntegracionesEtapa';
 import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
 import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
@@ -17,6 +18,7 @@ import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
 import {
   esEtapaOperativa,
+  esPasoOferta,
   panelTieneIntegracionProveedor,
   proveedorDePanel,
   tipoPanelPaso,
@@ -40,8 +42,12 @@ import { SeguimientoAnonimizacion } from '../components/SeguimientoAnonimizacion
 import { SeguimientoBluesite } from '../components/SeguimientoBluesite';
 import { SeguimientoCosinte } from '../components/SeguimientoCosinte';
 import { SeguimientoMedilaboral } from '../components/SeguimientoMedilaboral';
+import { SeguimientoOferta } from '../components/SeguimientoOferta';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
+// `OFERTA` no tiene entrada aquí: no lista candidatos (un único recurso por
+// vacante vía `candidato-final`), así que el mensaje de "lista vacía" de
+// `ListaRankingCandidatos` no aplica a este paso.
 /** Mensaje de "sin candidatos" por panel operativo; los paneles sin entrada usan el mensaje genérico de la tabla. */
 const MENSAJE_VACIO_POR_PANEL: Partial<Record<NonNullable<TipoPanelPaso>, string>> = {
   ANONIMIZACION: 'No hay candidatos en anonimización para esta vacante.',
@@ -60,7 +66,9 @@ const TAMANO_PAGINA_INICIAL = 5;
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
  * filtrados, la anonimización, Bluesite, Cosinte y Medilaboral también son
  * operativos (estos cuatro últimos de solo consulta); los demás pasos son
- * navegables con un placeholder.
+ * navegables con un placeholder. El último paso, Oferta, también es operativo
+ * pero no lista candidatos: muestra el candidato final de la vacante en un
+ * panel único de ancho completo, sin el layout de dos columnas.
  * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
@@ -168,7 +176,9 @@ export function PaginaProcesosReclutador() {
     setTamanoPaginaCandidatos(tamano);
   }, []);
 
-  const operativa = esEtapaOperativa(pasoClave);
+  // `esPasoOferta` compensa que `OFERTA` no tiene entrada en `ESTADOS_POR_ETAPA`
+  // (no lista candidatos, así que `esEtapaOperativa` por sí sola daría `false`).
+  const operativa = esEtapaOperativa(pasoClave) || esPasoOferta(pasoClave);
   // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
   // (listado de filtrados), anonimización (seguimiento al líder), Bluesite
   // (pruebas psicotécnicas), Cosinte (estudio de seguridad) o Medilaboral
@@ -180,6 +190,14 @@ export function PaginaProcesosReclutador() {
     clienteApi,
     panel === 'PREFILTRO' ? candidatoId : null,
   );
+  // No depende de `candidatoId`: a diferencia de los demás paneles, Oferta no
+  // lista candidatos ni tiene selección — un único recurso por vacante activa.
+  const candidatoFinal = useCandidatoFinal(clienteApi, panel === 'OFERTA' ? vacanteId : null);
+  // Se deriva del candidato final devuelto por el endpoint, no de `candidatoId`
+  // (que no existe en este paso: no hay selección de lista).
+  const onVerDetalleCompletoOferta = candidatoFinal.datos
+    ? () => irADetalleCandidato(candidatoFinal.datos!.jobApplicationId)
+    : undefined;
   // Solo un panel está activo a la vez: una única instancia del hook alcanza,
   // el proveedor consultado cambia con el panel activo (Bluesite, Cosinte o Medilaboral).
   const proveedorIntegracion = useMemo(() => proveedorDePanel(panel) ?? 'BLUESITE', [panel]);
@@ -325,6 +343,18 @@ export function PaginaProcesosReclutador() {
             onVerDetalleCompleto={onVerDetalleCompleto}
           />
         );
+      case 'OFERTA':
+        return (
+          <SeguimientoOferta
+            candidato={candidatoFinal.datos}
+            cargando={candidatoFinal.cargando}
+            error={candidatoFinal.error}
+            onReintentar={candidatoFinal.recargar}
+            catalogo={catalogo}
+            tituloVacante={nombreVacante}
+            onVerDetalleCompleto={onVerDetalleCompletoOferta}
+          />
+        );
       default:
         return (
           <ResultadoSelecta
@@ -365,12 +395,18 @@ export function PaginaProcesosReclutador() {
             onReintentar={detalleVacante.recargar}
           />
           <RailPipeline pasoActivo={pasoClave} onSeleccionarPaso={seleccionarPaso} />
-          <LayoutPasoPipeline
-            izquierda={columnaIzquierda()}
-            derecha={columnaDerecha()}
-            haySeleccion={candidatoId !== null && operativa}
-            onVolver={() => setCandidatoId(null)}
-          />
+          {panel === 'OFERTA' ? (
+            // Oferta no lista candidatos: panel único de ancho completo, sin
+            // el layout maestro-detalle de `LayoutPasoPipeline`.
+            <Box sx={{ minWidth: 0 }}>{columnaDerecha()}</Box>
+          ) : (
+            <LayoutPasoPipeline
+              izquierda={columnaIzquierda()}
+              derecha={columnaDerecha()}
+              haySeleccion={candidatoId !== null && operativa}
+              onVolver={() => setCandidatoId(null)}
+            />
+          )}
         </>
       )}
 
