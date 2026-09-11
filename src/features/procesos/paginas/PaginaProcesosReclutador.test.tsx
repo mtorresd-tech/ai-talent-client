@@ -455,19 +455,6 @@ describe('PaginaProcesosReclutador', () => {
     expect(screen.queryByText('Tampoco Este')).not.toBeInTheDocument();
   });
 
-  it('los pasos sin soporte muestran el placeholder "en construcción"', async () => {
-    const usuario = userEvent.setup();
-    renderPagina(<PaginaProcesosReclutador />);
-
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-
-    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
-
-    expect(await screen.findByText(/construcción/i)).toBeInTheDocument();
-  });
-
   it('al seleccionar un candidato consulta su detalle y muestra el desglose de afinidad', async () => {
     const usuario = userEvent.setup();
     renderPagina(<PaginaProcesosReclutador />);
@@ -1014,5 +1001,206 @@ describe('PaginaProcesosReclutador · paso Medilaboral', () => {
     expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
     expect(screen.getByText('Helena Cruz')).toBeInTheDocument();
     expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Oferta', () => {
+  const candidatoFinal = {
+    jobApplicationId: 'APP-55',
+    jobRequisitionId: 'REQ-1',
+    alias: 'Candidato 55',
+    nombre: 'Ricardo Torres',
+    numeroDocumento: '1000000055',
+    estado: 'INICIAR_PROCESO_CONTRATACION',
+    estadoDesde: '2026-08-06T00:00:00Z',
+    estadoSfsf: 'Oferta',
+    fechaPostulacion: '2026-08-01T00:00:00Z',
+    origenPostulacion: 'Jobs2Web',
+    scoreAfinidad: 67.5,
+    rankingPosicion: null,
+    esperandoDecision: false,
+    compuertaPendiente: null,
+    desgloseAfinidad: {
+      porcentajeTotal: 67.5,
+      porcentajeFortalezas: 52.0,
+      porcentajeExperiencia: 64.7,
+      porcentajeEstudios: 86.7,
+      fortalezas: ['Ingles nivel B2 acreditado'],
+      debilidades: ['Sin certificacion en la herramienta principal del cargo'],
+      comentarios: 'Cumple parcialmente; revisar las brechas antes de avanzar.',
+    },
+    integraciones: [],
+    identidadRevelada: true,
+    sincronizacionSfsf: {
+      estado: 'SINCRONIZADO',
+      ultimaSincronizacion: null,
+      intentos: 0,
+      ultimoError: null,
+    },
+    tipoCandidato: 'INTERNO',
+  };
+
+  function mockearConCandidatoFinal() {
+    cliente.get.mockImplementation((url: string) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') return Promise.resolve(listaCandidatos);
+      if (url === '/vacantes/REQ-1/candidato-final') return Promise.resolve(candidatoFinal);
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+  }
+
+  function mockearSinCandidatoFinal() {
+    cliente.get.mockImplementation((url: string) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') return Promise.resolve(listaCandidatos);
+      if (url === '/vacantes/REQ-1/candidato-final') {
+        return Promise.reject(errorApi(404, 'La vacante aun no tiene candidato final'));
+      }
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+  }
+
+  async function abrirOferta() {
+    const usuario = userEvent.setup();
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <MostrarUbicacion />
+      </>,
+    );
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
+    return usuario;
+  }
+
+  it('muestra el candidato final a ancho completo, sin columna de lista', async () => {
+    mockearConCandidatoFinal();
+    await abrirOferta();
+
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith(
+        '/vacantes/REQ-1/candidato-final',
+        expect.anything(),
+      ),
+    );
+
+    expect(await screen.findByText('Ricardo Torres')).toBeInTheDocument();
+    expect(screen.getByText('Interno')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sincronización con SuccessFactors/),
+    ).toBeInTheDocument();
+    // Sin match/afinidad generado por IA en este paso.
+    expect(screen.queryByText('Match generado por IA')).not.toBeInTheDocument();
+    // Sin columna de lista de candidatos en este paso: la única tabla visible
+    // es la de vacantes (siempre presente arriba de la página).
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+  });
+
+  it('sin candidato final (404) muestra el vacío informativo, sin botón de reintento de error', async () => {
+    mockearSinCandidatoFinal();
+    await abrirOferta();
+
+    expect(
+      await screen.findByText('Esta vacante todavía no tiene un candidato final.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reintentar/i })).not.toBeInTheDocument();
+  });
+
+  it('error real (500) muestra EstadoError y el reintento vuelve a pedir el candidato final', async () => {
+    cliente.get.mockImplementation((url: string) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidatos') return Promise.resolve(listaCandidatos);
+      if (url === '/vacantes/REQ-1/candidato-final') return Promise.reject(errorApi(500));
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+    const usuario = await abrirOferta();
+
+    await usuario.click(await screen.findByRole('button', { name: /reintentar/i }));
+
+    await waitFor(() => {
+      const llamadas = cliente.get.mock.calls.filter(
+        (c) => c[0] === '/vacantes/REQ-1/candidato-final',
+      );
+      expect(llamadas.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it('"Ver detalle completo" navega usando el jobApplicationId del candidato final', async () => {
+    mockearConCandidatoFinal();
+    await abrirOferta();
+    await screen.findByText('Ricardo Torres');
+
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole('button', { name: 'Ver detalle completo' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos/candidato/APP-55?vacante=REQ-1&paso=OFERTA',
+    );
+  });
+
+  it('cambiar de Medilaboral a Oferta y viceversa alterna entre el layout de dos columnas y el panel único', async () => {
+    cliente.get.mockImplementation((url: string, config?: { params?: { estado?: string[] } }) => {
+      if (url === '/vacantes') {
+        return Promise.resolve({
+          data: [vacante],
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        });
+      }
+      if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+      if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/candidato-final') return Promise.resolve(candidatoFinal);
+      if (url === '/vacantes/REQ-1/candidatos') {
+        const estados = config?.params?.estado ?? [];
+        if (estados.includes('EN_PRUEBAS_MEDILABORAL')) return Promise.resolve(listaMedilaboral);
+        return Promise.resolve(listaCandidatos);
+      }
+      if (url === '/vacantes/REQ-1/integraciones') return Promise.resolve(integracionesMedilaboral);
+      return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    });
+
+    const usuario = userEvent.setup();
+    renderPagina(<PaginaProcesosReclutador />);
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+    await screen.findByText('Ana Pérez');
+
+    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
+    expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
+    expect(await screen.findByText('Ricardo Torres')).toBeInTheDocument();
+    expect(screen.queryByText('Gustavo Peña')).not.toBeInTheDocument();
+    expect(screen.queryByText('Selecciona un candidato')).not.toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
+    expect(screen.queryByText('Ricardo Torres')).not.toBeInTheDocument();
   });
 });
