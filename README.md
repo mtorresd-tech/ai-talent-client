@@ -84,6 +84,14 @@ src/
 └── shared/         # tipos de dominio y cliente HTTP compartidos — sin lógica de negocio
 ```
 
+El código de las integraciones con Bluesite, Cosinte y Medilaboral, y el
+paso Oferta del pipeline (en `features/integraciones/` y
+`features/procesos/`), se mantiene en el repositorio como respaldo: no
+están expuestos en el rail del portal del Reclutador, pero conservan su
+lógica, sus pantallas y sus pruebas intactas por si el cliente decide
+reactivarlos. Se eliminarán al finalizar el proyecto si no se retoman
+antes de esa fecha.
+
 Los features no se importan entre sí (excepto `procesos`, que consume tipos
 de `integraciones`); lo reutilizable entre proyectos GEB se propone como
 paquete `@geb/*`, no como código duplicado en este repo.
