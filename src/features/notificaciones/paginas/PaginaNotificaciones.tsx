@@ -1,4 +1,6 @@
+import Stack from '@mui/material/Stack';
 import { GebEmptyState } from '@geb/ui';
+import { EncabezadoPagina } from '../../../shared/components/EncabezadoPagina';
 
 /**
  * TODO: sin endpoint dedicado todavía — visible en ambos portales.
@@ -8,9 +10,15 @@ import { GebEmptyState } from '@geb/ui';
  */
 export function PaginaNotificaciones() {
   return (
-    <GebEmptyState
-      titulo="Notificaciones"
-      descripcion="TODO: pendiente de endpoints del backend."
-    />
+    <Stack spacing={{ xs: 1.5, sm: 2 }}>
+      <EncabezadoPagina
+        titulo="Notificaciones"
+        subtitulo="Mantente al tanto de las novedades de tus procesos de selección."
+      />
+      <GebEmptyState
+        titulo="Muy pronto"
+        descripcion="Esta sección estará disponible en una próxima entrega."
+      />
+    </Stack>
   );
 }
