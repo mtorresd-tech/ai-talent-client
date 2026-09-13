@@ -15,6 +15,13 @@ describe('PASOS_PIPELINE', () => {
     expect(PASO_INICIAL).toBe(CLAVE_ETAPA_RANKING);
     expect(PASO_INICIAL).toBe(PASOS_PIPELINE[0].clave);
   });
+
+  it('ubica "Matriz de selección" inmediatamente después de Bluesite y antes de Cosinte', () => {
+    const claves = PASOS_PIPELINE.map((p) => p.clave);
+    const indiceMatriz = claves.indexOf('MATRIZ_SELECCION');
+    expect(claves[indiceMatriz - 1]).toBe('BLUESITE');
+    expect(claves[indiceMatriz + 1]).toBe('COSINTE');
+  });
 });
 
 describe('FASES_SAP', () => {
@@ -33,11 +40,34 @@ describe('FASES_SAP', () => {
     const anidados = FASES_SAP.flatMap((f) => f.pasos);
     expect([...anidados].sort()).toEqual([...PASOS_PIPELINE.map((p) => p.clave)].sort());
   });
+
+  it('marca como ocultas las 7 fases sin lugar en el rail simplificado', () => {
+    const clavesOcultas = [
+      'PSICOTECNICAS',
+      'PRUEBA_TECNICA',
+      'ENTREVISTA_COMPETENCIAS',
+      'ENTREVISTA_JEFE',
+      'SEGUNDA_ENTREVISTA',
+      'SEGURIDAD_MEDICO',
+      'OFERTA',
+    ];
+    for (const clave of clavesOcultas) {
+      expect(FASES_SAP.find((f) => f.clave === clave)?.oculta).toBe(true);
+    }
+  });
+
+  it('no marca como ocultas las 3 fases visibles del rail simplificado', () => {
+    const clavesVisibles = ['POSTULANTES', 'PREFILTRO_TELEFONICO', 'MATRIZ_SELECCION'];
+    for (const clave of clavesVisibles) {
+      expect(FASES_SAP.find((f) => f.clave === clave)?.oculta ?? false).toBe(false);
+    }
+  });
 });
 
 describe('nombrePaso', () => {
   it('devuelve el nombre visible del paso o null', () => {
     expect(nombrePaso('LISTA_FILTRADOS')).toBe('Listado de filtrados');
+    expect(nombrePaso('MATRIZ_SELECCION')).toBe('Matriz de selección');
     expect(nombrePaso('NO_EXISTE')).toBeNull();
   });
 });
