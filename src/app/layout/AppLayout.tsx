@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Box from '@mui/material/Box';
 import { GebAppLayout, type GebNavItem } from '@geb/ui';
 import { useAuth } from '@geb/auth';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
+import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
 
 /**
@@ -11,9 +15,24 @@ import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
  * features/procesos/paginas/PaginaProcesos.tsx).
  */
 const navegacion: GebNavItem[] = [
-  { etiqueta: 'Procesos', ruta: '/procesos', roles: [ROL_RECLUTADOR, ROL_LIDER] },
-  { etiqueta: 'Métricas', ruta: '/metricas', roles: [ROL_RECLUTADOR] },
-  { etiqueta: 'Notificaciones', ruta: '/notificaciones', roles: [ROL_RECLUTADOR, ROL_LIDER] },
+  {
+    etiqueta: 'Procesos',
+    ruta: '/procesos',
+    roles: [ROL_RECLUTADOR, ROL_LIDER],
+    icono: <AssignmentOutlinedIcon />,
+  },
+  {
+    etiqueta: 'Métricas',
+    ruta: '/metricas',
+    roles: [ROL_RECLUTADOR],
+    icono: <BarChartOutlinedIcon />,
+  },
+  {
+    etiqueta: 'Notificaciones',
+    ruta: '/notificaciones',
+    roles: [ROL_RECLUTADOR, ROL_LIDER],
+    icono: <NotificationsOutlinedIcon />,
+  },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -29,6 +48,26 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <GebAppLayout
       tituloApp="IA Talento"
+      mostrarTituloApp={false}
+      logo={
+        <Box
+          role="img"
+          aria-label="Grupo Energía Bogotá"
+          sx={{
+            // `logo_geb.png` (1104x735) trae bastante margen transparente
+            // alrededor de la marca real; se recorta por CSS (fondo + tamaño
+            // y posición ajustados) para que el logo se vea a un tamaño
+            // legible en la navbar en vez del PNG completo (que lo dejaba
+            // diminuto).
+            width: 99,
+            height: 50,
+            backgroundImage: 'url(/logo_geb.png)',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '133.65px 88.98px',
+            backgroundPosition: '-11.62px -23.61px',
+          }}
+        />
+      }
       navegacion={navegacion}
       usuario={
         usuario
@@ -38,6 +77,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       onLogout={() => void logout()}
       rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
+      onNotificaciones={() => navigate('/notificaciones')}
     >
       {/* @geb/ui está buildeado contra @types/react 18; el `as any` evita el
           choque de identidad de tipos con la 19 de este repo — son dos
