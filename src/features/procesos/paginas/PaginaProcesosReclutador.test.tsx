@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import {
@@ -9,6 +9,7 @@ import {
   type ClienteApiFalso,
 } from '../../../test/clienteApiFalso';
 import { establecerAnchoViewport } from '../../../test/matchMedia';
+import { renderConTema } from '../../../test/renderConTema';
 import { limpiarCacheCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { PaginaProcesosReclutador } from './PaginaProcesosReclutador';
 
@@ -22,7 +23,7 @@ let cliente: ClienteApiFalso;
 
 /** Renderiza la página dentro de un router en memoria (usa `useSearchParams`/`useNavigate`). */
 function renderPagina(ui: ReactElement, rutaInicial = '/procesos') {
-  return render(<MemoryRouter initialEntries={[rutaInicial]}>{ui}</MemoryRouter>);
+  return renderConTema(<MemoryRouter initialEntries={[rutaInicial]}>{ui}</MemoryRouter>);
 }
 
 /** Expone la ruta actual del router para verificar navegaciones. */
@@ -397,6 +398,15 @@ beforeEach(() => {
 });
 
 describe('PaginaProcesosReclutador', () => {
+  it('muestra el encabezado de la página con el copy de Procesos', async () => {
+    renderPagina(<PaginaProcesosReclutador />);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Gestión de procesos')).toBeInTheDocument();
+  });
+
   it('selecciona una vacante, arma el pipeline local y carga candidatos de ranking', async () => {
     const usuario = userEvent.setup();
     renderPagina(<PaginaProcesosReclutador />);
@@ -542,6 +552,21 @@ describe('PaginaProcesosReclutador', () => {
     expect(llamadasCandidatos.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('muestra el nombre de la vacante seleccionada solo dentro de TarjetaDetalleVacante, sin BarraSeleccionVacante', async () => {
+    const usuario = userEvent.setup();
+    renderPagina(<PaginaProcesosReclutador />);
+
+    await screen.findByText('Analista de Datos');
+    await usuario.click(screen.getByText('Analista de Datos'));
+
+    // El detalle de la vacante muestra su título como encabezado propio.
+    expect(
+      await screen.findByRole('heading', { level: 6, name: 'Analista de Datos' }),
+    ).toBeInTheDocument();
+    // `BarraSeleccionVacante` ya no existe: sin botón "Filtrar" en la página.
+    expect(screen.queryByRole('button', { name: /Filtrar/ })).not.toBeInTheDocument();
+  });
+
   it('restaura vacante, etapa y candidato desde los query params al montar', async () => {
     renderPagina(
       <PaginaProcesosReclutador />,
@@ -656,6 +681,8 @@ describe('PaginaProcesosReclutador · paso Anonimización', () => {
 });
 
 describe('PaginaProcesosReclutador · paso Bluesite', () => {
+  // El rail ya no muestra la tarjeta de Bluesite (fase oculta): se llega a este
+  // paso por navegación manual de URL, exactamente igual que antes de ocultarla.
   async function abrirBluesite() {
     const usuario = userEvent.setup();
     renderPagina(
@@ -663,12 +690,12 @@ describe('PaginaProcesosReclutador · paso Bluesite', () => {
         <PaginaProcesosReclutador />
         <MostrarUbicacion />
       </>,
+      '/procesos?vacante=REQ-1&paso=BLUESITE',
     );
 
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-    await usuario.click(screen.getByRole('button', { name: /Bluesite/ }));
+    // La vacante ya viene preseleccionada por URL: el título aparece a la vez
+    // en la fila de la tabla y en el detalle, por eso se espera con `findAllByText`.
+    await screen.findAllByText('Analista de Datos');
     return usuario;
   }
 
@@ -771,6 +798,8 @@ describe('PaginaProcesosReclutador · paso Bluesite', () => {
 });
 
 describe('PaginaProcesosReclutador · paso Cosinte', () => {
+  // El rail ya no muestra la tarjeta de Cosinte (fase oculta): se llega a este
+  // paso por navegación manual de URL, exactamente igual que antes de ocultarla.
   async function abrirCosinte() {
     const usuario = userEvent.setup();
     renderPagina(
@@ -778,12 +807,12 @@ describe('PaginaProcesosReclutador · paso Cosinte', () => {
         <PaginaProcesosReclutador />
         <MostrarUbicacion />
       </>,
+      '/procesos?vacante=REQ-1&paso=COSINTE',
     );
 
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-    await usuario.click(screen.getByRole('button', { name: /Cosinte/ }));
+    // La vacante ya viene preseleccionada por URL: el título aparece a la vez
+    // en la fila de la tabla y en el detalle, por eso se espera con `findAllByText`.
+    await screen.findAllByText('Analista de Datos');
     return usuario;
   }
 
@@ -890,6 +919,9 @@ describe('PaginaProcesosReclutador · paso Cosinte', () => {
 });
 
 describe('PaginaProcesosReclutador · paso Medilaboral', () => {
+  // El rail ya no muestra la tarjeta de Medilaboral (fase oculta): se llega a
+  // este paso por navegación manual de URL, exactamente igual que antes de
+  // ocultarla.
   async function abrirMedilaboral() {
     const usuario = userEvent.setup();
     renderPagina(
@@ -897,12 +929,12 @@ describe('PaginaProcesosReclutador · paso Medilaboral', () => {
         <PaginaProcesosReclutador />
         <MostrarUbicacion />
       </>,
+      '/procesos?vacante=REQ-1&paso=MEDILABORAL',
     );
 
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    // La vacante ya viene preseleccionada por URL: el título aparece a la vez
+    // en la fila de la tabla y en el detalle, por eso se espera con `findAllByText`.
+    await screen.findAllByText('Analista de Datos');
     return usuario;
   }
 
@@ -1074,6 +1106,8 @@ describe('PaginaProcesosReclutador · paso Oferta', () => {
     });
   }
 
+  // El rail ya no muestra la tarjeta de Oferta (fase oculta): se llega a este
+  // paso por navegación manual de URL, exactamente igual que antes de ocultarla.
   async function abrirOferta() {
     const usuario = userEvent.setup();
     renderPagina(
@@ -1081,12 +1115,12 @@ describe('PaginaProcesosReclutador · paso Oferta', () => {
         <PaginaProcesosReclutador />
         <MostrarUbicacion />
       </>,
+      '/procesos?vacante=REQ-1&paso=OFERTA',
     );
 
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
+    // La vacante ya viene preseleccionada por URL: el título aparece a la vez
+    // en la fila de la tabla y en el detalle, por eso se espera con `findAllByText`.
+    await screen.findAllByText('Analista de Datos');
     return usuario;
   }
 
@@ -1103,9 +1137,7 @@ describe('PaginaProcesosReclutador · paso Oferta', () => {
 
     expect(await screen.findByText('Ricardo Torres')).toBeInTheDocument();
     expect(screen.getByText('Interno')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Sincronización con SuccessFactors/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Sincronización con SuccessFactors/)).toBeInTheDocument();
     // Sin match/afinidad generado por IA en este paso.
     expect(screen.queryByText('Match generado por IA')).not.toBeInTheDocument();
     // Sin columna de lista de candidatos en este paso: la única tabla visible
@@ -1184,22 +1216,27 @@ describe('PaginaProcesosReclutador · paso Oferta', () => {
       return Promise.reject(new Error(`URL no mockeada: ${url}`));
     });
 
-    const usuario = userEvent.setup();
-    renderPagina(<PaginaProcesosReclutador />);
-    await screen.findByText('Analista de Datos');
-    await usuario.click(screen.getByText('Analista de Datos'));
-    await screen.findByText('Ana Pérez');
-
-    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    // El rail ya no muestra las tarjetas de Medilaboral ni Oferta (fases
+    // ocultas): se alterna entre ambos pasos por navegación manual de URL
+    // (remontando la página en cada paso), igual que antes de ocultarlas.
+    const primeraVez = renderPagina(
+      <PaginaProcesosReclutador />,
+      '/procesos?vacante=REQ-1&paso=MEDILABORAL',
+    );
     expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
     expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
+    primeraVez.unmount();
 
-    await usuario.click(screen.getByRole('button', { name: /Oferta/ }));
+    const segundaVez = renderPagina(
+      <PaginaProcesosReclutador />,
+      '/procesos?vacante=REQ-1&paso=OFERTA',
+    );
     expect(await screen.findByText('Ricardo Torres')).toBeInTheDocument();
     expect(screen.queryByText('Gustavo Peña')).not.toBeInTheDocument();
     expect(screen.queryByText('Selecciona un candidato')).not.toBeInTheDocument();
+    segundaVez.unmount();
 
-    await usuario.click(screen.getByRole('button', { name: /Medilaboral/ }));
+    renderPagina(<PaginaProcesosReclutador />, '/procesos?vacante=REQ-1&paso=MEDILABORAL');
     expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
     expect(screen.queryByText('Ricardo Torres')).not.toBeInTheDocument();
   });
