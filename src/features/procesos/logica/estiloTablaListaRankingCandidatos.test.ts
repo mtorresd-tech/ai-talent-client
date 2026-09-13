@@ -21,4 +21,15 @@ describe('estiloTablaListaRankingCandidatos', () => {
       expect(estilo).toHaveProperty('& .MuiTablePagination-toolbar');
     }
   });
+
+  it('en ambas variantes pone en negrilla el encabezado de columna, en escritorio y en tarjetas mobile', () => {
+    for (const esSelecta of [true, false]) {
+      const estilo = estiloTablaListaRankingCandidatos(esSelecta) as Record<string, unknown>;
+      expect(estilo).toHaveProperty('& .MuiTableCell-head', { fontWeight: 700 });
+      expect(estilo).toHaveProperty(
+        '& [data-geb="GebDataTable-tarjetas"] .MuiCard-root > .MuiCardContent-root > .MuiBox-root > .MuiTypography-caption',
+        { fontWeight: 700 },
+      );
+    }
+  });
 });
