@@ -1,3 +1,4 @@
+import type { GebEstadoRegistro } from '@geb/ui';
 import { etiquetaEstado } from './etiquetasEstado';
 
 /**
@@ -25,4 +26,9 @@ export function resumenEtapaVacante(
 /** Etiqueta de estado de la vacante en la tabla. */
 export function etiquetaEstadoVacante(cerrada: boolean): string {
   return cerrada ? 'Cerrada' : 'En proceso';
+}
+
+/** Estado de `GebStatusChip` para el badge de la columna "Estado" de la tabla. */
+export function estadoRegistroVacante(cerrada: boolean): GebEstadoRegistro {
+  return cerrada ? 'neutral' : 'success';
 }
