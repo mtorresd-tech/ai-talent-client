@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { GebEmptyState } from '@geb/ui';
+import { EncabezadoPagina } from '../../../shared/components/EncabezadoPagina';
 import { useClienteApi } from '../../../shared/api/clienteApi';
 import type { VacanteResumen } from '../api/vacantes';
 import type { CandidatoResumen } from '../api/candidatos';
@@ -29,7 +30,6 @@ import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
 import { abrirSuccessFactors } from '../logica/successFactors';
 import { nombreProveedor } from '../../integraciones';
 import { TablaVacantes } from '../components/TablaVacantes';
-import { BarraSeleccionVacante } from '../components/BarraSeleccionVacante';
 import { TarjetaDetalleVacante } from '../components/TarjetaDetalleVacante';
 import { RailPipeline } from '../components/RailPipeline';
 import { LayoutPasoPipeline } from '../components/LayoutPasoPipeline';
@@ -372,6 +372,12 @@ export function PaginaProcesosReclutador() {
     // `contain: inline-size` fija el ancho de la página al del viewport; el
     // contenido ancho scrollea dentro de cada componente, no de la página.
     <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ minWidth: 0, contain: 'inline-size' }}>
+      <EncabezadoPagina
+        eyebrow="Gestión de procesos"
+        titulo="Procesos de selección activos"
+        subtitulo="Monitorea el avance de tus vacantes y el desempeño de las personas candidatas en cada etapa del proceso de evaluación."
+      />
+
       <TablaVacantes
         respuesta={vacantes.datos}
         cargando={vacantes.cargando}
@@ -387,7 +393,6 @@ export function PaginaProcesosReclutador() {
 
       {vacanteId && (
         <>
-          <BarraSeleccionVacante nombreVacante={nombreVacante} />
           <TarjetaDetalleVacante
             detalle={detalleVacante.datos}
             cargando={detalleVacante.cargando}
