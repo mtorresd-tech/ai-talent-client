@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ApiError, type GebApiClient } from '@geb/api-client';
 import { registrarDecision } from '../api/bandejas';
+import { nuevaClaveIdempotencia } from '../logica/idempotencia';
 
 /** Un fallo concreto dentro del lote de envío a prefiltro. */
 export interface FalloPrefiltro {
@@ -31,13 +32,6 @@ export interface EnvioPrefiltro {
    */
   enviar: (ids: string[]) => Promise<ResultadoEnvioPrefiltro>;
   reiniciar: () => void;
-}
-
-function nuevaClaveIdempotencia(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 /**
