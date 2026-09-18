@@ -89,3 +89,8 @@ export {
   type ResultadoEnvioPrefiltro,
   type FalloPrefiltro,
 } from './hooks/useEnviarPrefiltro';
+export {
+  useCandidatosEnRevisionLider,
+  type CandidatosEnRevisionLider,
+} from './hooks/useCandidatosEnRevisionLider';
+export { useDecisionLider, type DecisionLider } from './hooks/useDecisionLider';
