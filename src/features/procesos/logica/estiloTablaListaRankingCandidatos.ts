@@ -17,6 +17,15 @@ export function estiloTablaListaRankingCandidatos(esSelecta: boolean): SxProps<T
     // el checkbox y la afinidad a la altura del nombre, no flotando al
     // centro vertical de la fila.
     '& .MuiTableCell-root': { verticalAlign: 'top' },
+    // Negrilla real en los encabezados de columna: `.MuiTableCell-head` cubre
+    // la tabla de escritorio. En la vista de tarjetas mobile no hay
+    // `TableCell` de header — el título de cada campo se pinta como
+    // `Typography variant="caption"` dentro de la tarjeta, hijo directo de la
+    // fila; el selector baja hasta ese nivel exacto para no afectar otros
+    // textos en `caption` que pueda tener el contenido de cada campo.
+    '& .MuiTableCell-head': { fontWeight: 700 },
+    '& [data-geb="GebDataTable-tarjetas"] .MuiCard-root > .MuiCardContent-root > .MuiBox-root > .MuiTypography-caption':
+      { fontWeight: 700 },
     ...(esSelecta
       ? {
           // Acerca el checkbox al avatar: recorta el relleno lateral entre

@@ -3,12 +3,14 @@ import Chip from '@mui/material/Chip';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import type { TipoCandidato } from '../../../shared/tipos/dominio';
 import type { EstadoCatalogo } from '../api/catalogos';
 import type { CandidatoDetalle } from '../api/candidatos';
 import { nombreCandidato } from '../logica/candidato';
 import { resolverColorEstado, resolverEtiquetaEstado } from '../logica/etiquetasEstado';
 import { formatearFecha } from '../logica/formatoFecha';
 import { AvatarIniciales } from './AvatarIniciales';
+import { DistintivoTipoCandidato } from './DistintivoTipoCandidato';
 
 export interface TarjetaPerfilCandidatoProps {
   candidato: CandidatoDetalle | null;
@@ -16,6 +18,8 @@ export interface TarjetaPerfilCandidatoProps {
   /** `VacanteDetalle.titulo`; se omite la fila si no está disponible. */
   tituloVacante: string | null;
   cargando?: boolean;
+  /** Si se pasa, pinta `DistintivoTipoCandidato` junto al chip de estado. */
+  tipoCandidato?: TipoCandidato | null;
 }
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
@@ -36,6 +40,7 @@ export function TarjetaPerfilCandidato({
   catalogo,
   tituloVacante,
   cargando,
+  tipoCandidato,
 }: TarjetaPerfilCandidatoProps) {
   if (cargando && !candidato) {
     return <Skeleton variant="rounded" height={220} />;
@@ -60,12 +65,15 @@ export function TarjetaPerfilCandidato({
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
             {nombre}
           </Typography>
-          <Chip
-            size="small"
-            color={resolverColorEstado(catalogo, candidato.estado)}
-            label={resolverEtiquetaEstado(catalogo, candidato.estado)}
-            sx={{ mt: 0.5, fontSize: '0.6875rem', height: 22 }}
-          />
+          <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+            <Chip
+              size="small"
+              color={resolverColorEstado(catalogo, candidato.estado)}
+              label={resolverEtiquetaEstado(catalogo, candidato.estado)}
+              sx={{ fontSize: '0.6875rem', height: 22 }}
+            />
+            {tipoCandidato !== undefined && <DistintivoTipoCandidato tipo={tipoCandidato} />}
+          </Stack>
         </Box>
       </Box>
 

@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { GebDataTable, GebEmptyState, type GebColumna } from '@geb/ui';
+import { alpha } from '@mui/material/styles';
+import { GebDataTable, GebEmptyState, GebStatusChip, type GebColumna } from '@geb/ui';
 import { EstadoError } from './EstadoError';
 import type { ApiError } from '@geb/api-client';
 import type { RespuestaPaginada } from '../../../shared/tipos/dominio';
 import type { VacanteResumen } from '../api/vacantes';
-import { etiquetaEstadoVacante, resumenEtapaVacante } from '../logica/resumenEtapaVacante';
+import {
+  estadoRegistroVacante,
+  etiquetaEstadoVacante,
+  resumenEtapaVacante,
+} from '../logica/resumenEtapaVacante';
 
 /** Milisegundos de espera antes de disparar la búsqueda al backend. */
 const DEBOUNCE_BUSQUEDA_MS = 300;
@@ -88,7 +93,12 @@ export function TablaVacantes({
     {
       campo: 'cerrada',
       titulo: 'Estado',
-      render: (fila: VacanteResumen) => etiquetaEstadoVacante(fila.cerrada),
+      render: (fila: VacanteResumen) => (
+        <GebStatusChip
+          estado={estadoRegistroVacante(fila.cerrada)}
+          label={etiquetaEstadoVacante(fila.cerrada)}
+        />
+      ),
     },
     {
       campo: 'totalCandidatos',
@@ -105,18 +115,30 @@ export function TablaVacantes({
   return (
     <Box
       sx={{
+        // `GebDataTable` no expone un estado de fila seleccionada: se marca la
+        // fila/tarjeta activa con un `span` oculto (`data-fila-seleccionada`) y
+        // se la detecta con `:has()` para reforzar su fondo y borde izquierdo.
         '& tbody tr:has([data-fila-seleccionada])': {
-          bgcolor: 'action.selected',
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
         },
         '& tbody tr:has([data-fila-seleccionada]) td:first-of-type': {
-          boxShadow: (theme) => `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+          boxShadow: (theme) => `inset 4px 0 0 0 ${theme.palette.primary.main}`,
         },
         // Mismo resalte en la vista de tarjetas (viewports `< sm`), donde no hay
         // filas de tabla.
         '& [data-geb="GebDataTable-tarjetas"] .MuiCard-root:has([data-fila-seleccionada])': {
-          bgcolor: 'action.selected',
-          boxShadow: (theme) => `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+          boxShadow: (theme) => `inset 4px 0 0 0 ${theme.palette.primary.main}`,
         },
+        // Negrilla real en los encabezados de columna: `.MuiTableCell-head` cubre
+        // la tabla de escritorio. En la vista de tarjetas mobile no hay
+        // `TableCell` de header — el título de cada campo se pinta como
+        // `Typography variant="caption"` dentro de la tarjeta, hijo directo de la
+        // fila; el selector baja hasta ese nivel exacto para no afectar otros
+        // textos en `caption` que pueda tener el contenido de cada campo.
+        '& .MuiTableCell-head': { fontWeight: 700 },
+        '& [data-geb="GebDataTable-tarjetas"] .MuiCard-root > .MuiCardContent-root > .MuiBox-root > .MuiTypography-caption':
+          { fontWeight: 700 },
         // La paginación no encoge sola en pantallas angostas; se envuelve en
         // vez de forzar scroll horizontal.
         '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', rowGap: 0.25 },

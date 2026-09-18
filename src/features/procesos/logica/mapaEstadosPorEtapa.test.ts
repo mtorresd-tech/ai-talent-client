@@ -6,6 +6,7 @@ import {
   esPasoBluesite,
   esPasoCosinte,
   esPasoMedilaboral,
+  esPasoOferta,
   esPasoSelecta,
   estadosDeEtapa,
   panelTieneIntegracionProveedor,
@@ -79,6 +80,10 @@ describe('esEtapaOperativa', () => {
     expect(esEtapaOperativa('MEDILABORAL')).toBe(true);
     expect(esEtapaOperativa('CLAVE_NO_MAPEADA')).toBe(false);
   });
+
+  it('OFERTA devuelve false a propósito: no tiene entrada en ESTADOS_POR_ETAPA (no lista candidatos)', () => {
+    expect(esEtapaOperativa('OFERTA')).toBe(false);
+  });
 });
 
 describe('esPasoSelecta', () => {
@@ -126,6 +131,15 @@ describe('esPasoMedilaboral', () => {
   });
 });
 
+describe('esPasoOferta', () => {
+  it('solo es cierto para el paso de Oferta', () => {
+    expect(esPasoOferta('OFERTA')).toBe(true);
+    expect(esPasoOferta('COSINTE')).toBe(false);
+    expect(esPasoOferta('MEDILABORAL')).toBe(false);
+    expect(esPasoOferta(null)).toBe(false);
+  });
+});
+
 describe('tipoPanelPaso', () => {
   it('discrimina el panel derecho por tipo de paso', () => {
     expect(tipoPanelPaso('SELECTA')).toBe('SELECTA');
@@ -134,6 +148,7 @@ describe('tipoPanelPaso', () => {
     expect(tipoPanelPaso('BLUESITE')).toBe('BLUESITE');
     expect(tipoPanelPaso('COSINTE')).toBe('COSINTE');
     expect(tipoPanelPaso('MEDILABORAL')).toBe('MEDILABORAL');
+    expect(tipoPanelPaso('OFERTA')).toBe('OFERTA');
     expect(tipoPanelPaso(null)).toBeNull();
   });
 });
@@ -145,6 +160,8 @@ describe('panelTieneIntegracionProveedor', () => {
     expect(panelTieneIntegracionProveedor('MEDILABORAL')).toBe(true);
     expect(panelTieneIntegracionProveedor('SELECTA')).toBe(false);
     expect(panelTieneIntegracionProveedor('ANONIMIZACION')).toBe(false);
+    // Oferta no tiene proveedor propio en el enum `Proveedor`.
+    expect(panelTieneIntegracionProveedor('OFERTA')).toBe(false);
     expect(panelTieneIntegracionProveedor(null)).toBe(false);
   });
 });
@@ -154,6 +171,7 @@ describe('proveedorDePanel', () => {
     expect(proveedorDePanel('MEDILABORAL')).toBe('MEDILABORAL');
     expect(proveedorDePanel('BLUESITE')).toBe('BLUESITE');
     expect(proveedorDePanel('COSINTE')).toBe('COSINTE');
+    expect(proveedorDePanel('OFERTA')).toBeUndefined();
     expect(proveedorDePanel(null)).toBeUndefined();
   });
 });

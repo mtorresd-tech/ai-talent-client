@@ -25,6 +25,8 @@ export interface FaseSap {
   nota?: string;
   /** `true` si la fase ocurre fuera de la plataforma (se pinta con borde punteado). */
   externa?: boolean;
+  /** `true` si la fase no se renderiza en el rail, aunque conserva sus pasos y su navegación por URL. */
+  oculta?: boolean;
 }
 
 /** Pasos internos de IA Talento, en orden. `CLAVE_PASO_SELECTA` es el primero. */
@@ -33,6 +35,7 @@ export const PASOS_PIPELINE: readonly PasoPipeline[] = [
   { clave: 'LISTA_FILTRADOS', nombre: 'Listado de filtrados' },
   { clave: 'ANONIMIZACION', nombre: 'Anonimización' },
   { clave: 'BLUESITE', nombre: 'Bluesite' },
+  { clave: 'MATRIZ_SELECCION', nombre: 'Matriz de selección' },
   { clave: 'COSINTE', nombre: 'Cosinte' },
   { clave: 'MEDILABORAL', nombre: 'Medilaboral' },
   { clave: 'OFERTA', nombre: 'Oferta' },
@@ -49,13 +52,19 @@ export const FASES_SAP: readonly FaseSap[] = [
     nombre: 'Prefiltro telefónico',
     pasos: ['LISTA_FILTRADOS', 'ANONIMIZACION'],
   },
-  { clave: 'PSICOTECNICAS', nombre: 'Pruebas psicotécnicas', pasos: ['BLUESITE'] },
+  {
+    clave: 'PSICOTECNICAS',
+    nombre: 'Pruebas psicotécnicas',
+    pasos: ['BLUESITE'],
+    oculta: true,
+  },
   {
     clave: 'PRUEBA_TECNICA',
     nombre: 'Prueba técnica o assessment',
     pasos: [],
     nota: 'Fuera de IA Talento',
     externa: true,
+    oculta: true,
   },
   {
     clave: 'ENTREVISTA_COMPETENCIAS',
@@ -63,31 +72,34 @@ export const FASES_SAP: readonly FaseSap[] = [
     pasos: [],
     nota: 'Fuera de IA Talento',
     externa: true,
+    oculta: true,
   },
   {
     clave: 'ENTREVISTA_JEFE',
     nombre: 'Entrevista jefe inmediato',
     pasos: [],
     nota: 'Portal del líder · formulario',
+    oculta: true,
   },
   {
     clave: 'SEGUNDA_ENTREVISTA',
     nombre: 'Segunda entrevista del área',
     pasos: [],
     nota: 'Portal del líder · formulario',
+    oculta: true,
   },
   {
     clave: 'MATRIZ_SELECCION',
     nombre: 'Matriz de selección',
-    pasos: [],
-    nota: 'IA Talento ordena y envía a los mejores',
+    pasos: ['MATRIZ_SELECCION'],
   },
   {
     clave: 'SEGURIDAD_MEDICO',
     nombre: 'Estudio de seguridad y examen médico',
     pasos: ['COSINTE', 'MEDILABORAL'],
+    oculta: true,
   },
-  { clave: 'OFERTA', nombre: 'Oferta', pasos: ['OFERTA'] },
+  { clave: 'OFERTA', nombre: 'Oferta', pasos: ['OFERTA'], oculta: true },
 ];
 
 /** Nombre visible de un paso interno a partir de su clave. */

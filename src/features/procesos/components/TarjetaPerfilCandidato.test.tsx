@@ -52,4 +52,28 @@ describe('TarjetaPerfilCandidato', () => {
     expect(screen.getByText('Candidato 7')).toBeInTheDocument();
     expect(screen.queryByText('Documento')).not.toBeInTheDocument();
   });
+
+  it('sin tipoCandidato no pinta ningún distintivo (comportamiento sin cambios para P-05)', () => {
+    render(
+      <TarjetaPerfilCandidato candidato={base} catalogo={null} tituloVacante="Analista de Datos" />,
+    );
+
+    expect(screen.queryByText('Interno')).not.toBeInTheDocument();
+    expect(screen.queryByText('Externo')).not.toBeInTheDocument();
+  });
+
+  it('con tipoCandidato pinta el distintivo junto al chip de estado', () => {
+    render(
+      <TarjetaPerfilCandidato
+        candidato={base}
+        catalogo={null}
+        tituloVacante="Analista de Datos"
+        tipoCandidato="INTERNO"
+      />,
+    );
+
+    const distintivo = screen.getByText('Interno');
+    const chip = screen.getByText('En ranking');
+    expect(distintivo.closest('.MuiStack-root')).toBe(chip.closest('.MuiStack-root'));
+  });
 });

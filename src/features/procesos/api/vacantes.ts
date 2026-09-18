@@ -1,5 +1,6 @@
 import type { GebApiClient } from '@geb/api-client';
 import type { Portal, RespuestaPaginada } from '../../../shared/tipos/dominio';
+import type { CandidatoDetalle } from './candidatos';
 
 /** Opciones de transporte comunes: permite cancelar la petición desde los hooks. */
 export interface OpcionesPeticion {
@@ -84,6 +85,21 @@ export function obtenerPipeline(
 ) {
   return clienteApi.get<EtapaPipeline[]>(`/vacantes/${jobRequisitionId}/pipeline`, {
     params: portal ? { portal } : undefined,
+    signal: opciones.signal,
+  });
+}
+
+/**
+ * Candidato final de la vacante (último paso del pipeline, fase "Oferta").
+ * 404 mientras la vacante no tiene un candidato en el estado que el backend
+ * considera final.
+ */
+export function obtenerCandidatoFinal(
+  clienteApi: GebApiClient,
+  jobRequisitionId: string,
+  opciones: OpcionesPeticion = {},
+) {
+  return clienteApi.get<CandidatoDetalle>(`/vacantes/${jobRequisitionId}/candidato-final`, {
     signal: opciones.signal,
   });
 }
