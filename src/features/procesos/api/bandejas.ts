@@ -6,6 +6,7 @@ import type {
   RespuestaPaginada,
   SincronizacionSfsf,
 } from '../../../shared/tipos/dominio';
+import type { DesgloseAfinidad } from './candidatos';
 
 export interface ItemBandeja {
   jobApplicationId: string;
@@ -30,13 +31,22 @@ export interface InformeIncognito {
   generadoEn: string;
   aniosExperienciaTotal: number | null;
   nivelAcademicoMaximo: string | null;
-  experiencia: {
-    sector: string | null;
-    cargo: string;
-    duracionMeses: number | null;
-    funciones: string | null;
-  }[];
-  competencias: string[];
+  /**
+   * Experiencia laboral extraída de la hoja de vida. El contrato la declara como
+   * un arreglo de objetos abiertos sin esquema y con `default: []`, por lo que
+   * puede llegar ausente.
+   */
+  experiencia?: Record<string, unknown>[];
+  /**
+   * Formación académica extraída de la hoja de vida. Mismo tratamiento que
+   * `experiencia`: objeto abierto sin esquema, `default: []`, puede llegar
+   * ausente.
+   */
+  estudios?: Record<string, unknown>[];
+  /** Competencias declaradas. `default: []` en el contrato, puede llegar ausente. */
+  competencias?: string[];
+  /** Desglose de afinidad generado por IA, o `null` si aún no se calculó. */
+  desgloseAfinidad: DesgloseAfinidad | null;
 }
 
 export interface DecisionRequest {
