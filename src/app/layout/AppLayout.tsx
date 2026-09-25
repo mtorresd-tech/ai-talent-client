@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { GebAppLayout, type GebNavItem } from '@geb/ui';
@@ -7,6 +7,8 @@ import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { useClienteApi } from '../../shared/api/clienteApi';
+import { useContadorNoLeidas } from '../../features/notificaciones/hooks/useContadorNoLeidas';
 
 /**
  * Navegación real de ambos portales: Reclutador ve Procesos/Métricas/
@@ -39,11 +41,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario, logout } = useAuth();
+  const clienteApi = useClienteApi();
+  const contador = useContadorNoLeidas(clienteApi);
 
   // El sidebar resalta la entrada cuya `ruta` coincide con `rutaActual`; las
   // subpáginas (p. ej. `/procesos/candidato/:id`) se normalizan a su sección
   // base para que la entrada del sidebar siga activa.
   const rutaActual = location.pathname.startsWith('/procesos') ? '/procesos' : location.pathname;
+
+  // `AppLayout` y `PaginaNotificaciones` son hermanos en el árbol: refrescar
+  // el contador en cada cambio de ruta cubre el caso real de uso (el usuario
+  // marca notificaciones como leídas y navega a otra sección) sin necesidad
+  // de levantar estado compartido entre ambos. Se omite la primera ejecución
+  // (montaje) porque `useContadorNoLeidas` ya consulta una vez por su cuenta.
+  const montado = useRef(false);
+  useEffect(() => {
+    if (!montado.current) {
+      montado.current = true;
+      return;
+    }
+    contador.recargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <GebAppLayout
@@ -78,6 +97,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
       onNotificaciones={() => navigate('/notificaciones')}
+      notificacionesSinLeer={contador.cantidad}
     >
       {/* @geb/ui está buildeado contra @types/react 18; el `as any` evita el
           choque de identidad de tipos con la 19 de este repo — son dos
