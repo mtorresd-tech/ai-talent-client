@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { GebAuthContext, type GebAuthContextValue } from '@geb/auth';
 import { crearClienteApiFalso, type ClienteApiFalso } from '../../test/clienteApiFalso';
 import { renderConTema } from '../../test/renderConTema';
-import { ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
 import { AppLayout } from './AppLayout';
 
 const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | null }));
@@ -32,6 +32,22 @@ function renderAppLayout(rutaInicial = '/procesos') {
   return renderConTema(
     <GebAuthContext.Provider value={auth}>
       <MemoryRouter initialEntries={[rutaInicial]}>
+        <AppLayout>
+          <div>Contenido</div>
+        </AppLayout>
+      </MemoryRouter>
+    </GebAuthContext.Provider>,
+  );
+}
+
+function renderAppLayoutConRoles(roles: string[]) {
+  const authConRoles: GebAuthContextValue = {
+    ...auth,
+    usuario: { ...auth.usuario!, roles },
+  };
+  return renderConTema(
+    <GebAuthContext.Provider value={authConRoles}>
+      <MemoryRouter initialEntries={['/procesos']}>
         <AppLayout>
           <div>Contenido</div>
         </AppLayout>
@@ -86,5 +102,19 @@ describe('AppLayout', () => {
     await usuario.click(screen.getByRole('link', { name: 'Procesos' }));
 
     await waitFor(() => expect(cliente.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('muestra la etiqueta de rol "Reclutador" en el menú de usuario con ROL_RECLUTADOR', () => {
+    contenedorMock.cliente = crearClienteApiFalso();
+    renderAppLayoutConRoles([ROL_RECLUTADOR]);
+
+    expect(screen.getByText('Reclutador')).toBeInTheDocument();
+  });
+
+  it('muestra la etiqueta de rol "Líder de área" en el menú de usuario con ROL_LIDER', () => {
+    contenedorMock.cliente = crearClienteApiFalso();
+    renderAppLayoutConRoles([ROL_LIDER]);
+
+    expect(screen.getByText('Líder de área')).toBeInTheDocument();
   });
 });

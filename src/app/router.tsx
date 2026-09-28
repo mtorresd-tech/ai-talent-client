@@ -1,20 +1,25 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth, RequireRole } from '@geb/auth';
+import { useAuth, RequireRole, hasAnyRole } from '@geb/auth';
 import { AppLayout } from './layout/AppLayout';
-import { PaginaInicioSesion } from '../features/auth';
+import { PaginaInicioSesion, PantallaCargaSesion, PaginaSinAcceso } from '../features/auth';
 import { PaginaProcesos, PaginaDetalleCandidato } from '../features/procesos';
 import { PaginaMetricas } from '../features/metricas';
 import { PaginaNotificaciones } from '../features/notificaciones';
-import { ROL_RECLUTADOR } from '../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR } from '../shared/tipos/dominio';
+import { useSesionApi } from '../shared/auth/SesionApiContext';
 
 export function AppRouter() {
-  const { estado } = useAuth();
+  const { estado, usuario } = useAuth();
+  const { sesionSinRol } = useSesionApi();
 
-  // TODO: pantalla de carga dedicada (@geb/ui no tiene una por defecto).
-  if (estado === 'cargando') return null;
+  if (estado === 'cargando') return <PantallaCargaSesion />;
 
   if (estado !== 'autenticado') {
     return <PaginaInicioSesion />;
+  }
+
+  if (!hasAnyRole(usuario?.roles, [ROL_RECLUTADOR, ROL_LIDER]) || sesionSinRol) {
+    return <PaginaSinAcceso />;
   }
 
   return (

@@ -8,13 +8,11 @@ import {
 import { DevAuthContext, type DevAuthContextValue } from './DevAuthContext';
 
 /**
- * Reemplazo local de `GebAuthProvider` para desarrollar sin app registration
- * de Entra ID todavía: sesión simulada en memoria, sin redirección a
- * Microsoft. Expone el mismo `GebAuthContext` de `@geb/auth` para que
+ * Modo desarrollo de autenticación: sesión simulada en memoria, sin
+ * redirección a Microsoft, para trabajar sin credenciales reales de Entra ID
+ * (ver `VITE_ENTRA_CLIENT_ID`/`VITE_ENTRA_TENANT_ID` en `.env.example`).
+ * Expone el mismo `GebAuthContext` de `@geb/auth` para que
  * `useAuth()`/`RequireRole` del resto de la app funcionen sin cambios.
- *
- * TODO: borrar este provider y usar `<GebAuthProvider>` real en cuanto exista
- * el app registration (ver `VITE_ENTRA_CLIENT_ID` en `.env.example`).
  */
 export function DevAuthProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<EstadoSesion>('no-autenticado');
