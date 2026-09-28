@@ -6,7 +6,7 @@ import { useAuth } from '@geb/auth';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
-import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR, etiquetaRolUsuario } from '../../shared/tipos/dominio';
 import { useClienteApi } from '../../shared/api/clienteApi';
 import { useContadorNoLeidas } from '../../features/notificaciones/hooks/useContadorNoLeidas';
 
@@ -90,7 +90,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
       navegacion={navegacion}
       usuario={
         usuario
-          ? { nombre: usuario.nombre, tenant: usuario.tenant, roles: usuario.roles }
+          ? {
+              nombre: usuario.nombre,
+              tenant: usuario.tenant,
+              rol: etiquetaRolUsuario(usuario.roles),
+              roles: usuario.roles,
+            }
           : undefined
       }
       onLogout={() => void logout()}
