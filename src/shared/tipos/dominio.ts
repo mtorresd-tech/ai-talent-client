@@ -89,13 +89,20 @@ export type PoliticaCompuerta = 'MANUAL' | 'AUTOMATICA';
 
 export type Portal = 'RECLUTADOR' | 'LIDER';
 
-/**
- * Roles de aplicación. TODO: confirmar el listado real de `roles` que emite
- * Entra ID cuando exista el app registration — `LIDER_VACANTE` es el único
- * confirmado por el contrato (fuerza `anonimizado=true` en /candidatos).
- */
+/** Roles de aplicación que emite Entra ID para IA Talento. */
 export const ROL_RECLUTADOR = 'RECLUTADOR';
 export const ROL_LIDER = 'LIDER_VACANTE';
+
+const ETIQUETAS_ROL_USUARIO: Readonly<Record<string, string>> = {
+  [ROL_RECLUTADOR]: 'Reclutador',
+  [ROL_LIDER]: 'Líder de área',
+};
+
+/** Etiqueta legible del primer rol de la lista, para el menú de usuario del sidebar. */
+export function etiquetaRolUsuario(roles: readonly string[] | undefined): string | undefined {
+  const primerRol = roles?.[0];
+  return primerRol ? ETIQUETAS_ROL_USUARIO[primerRol] : undefined;
+}
 
 export interface PaginacionMeta {
   page: number;
