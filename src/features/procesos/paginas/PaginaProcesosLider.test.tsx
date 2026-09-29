@@ -60,11 +60,13 @@ const informe100 = {
   competencias: ['SQL', 'Python'],
   desgloseAfinidad: {
     porcentajeTotal: 77.7,
-    porcentajeFortalezas: 47.3,
-    porcentajeExperiencia: 89.1,
-    porcentajeEstudios: 92.9,
-    fortalezas: ['Inglés B2 acreditado'],
-    debilidades: ['Disponibilidad mayor a 30 días'],
+    versionRubrica: '1.0',
+    elegible: true,
+    motivosNoElegible: [],
+    componentes: [
+      { componente: 'EXPERIENCIA', peso: 0.25, obtenido: 0.89, aporte: 22.25, brecha: 2.75 },
+    ],
+    calidad: { confianza: 0.8, requiereRevision: false, provisional: false, alertas: [] },
     comentarios: 'Cumple parcialmente; revisar las brechas.',
   },
 };
