@@ -12,11 +12,16 @@ describe('InformeIncognito (tipo alineado al contrato)', () => {
   it('acepta el informe completo del endpoint de lista', () => {
     const desglose: DesgloseAfinidad = {
       porcentajeTotal: 77.7,
-      porcentajeFortalezas: 47.3,
-      porcentajeExperiencia: 89.1,
-      porcentajeEstudios: 92.9,
-      fortalezas: ['Inglés B2'],
-      debilidades: ['Disponibilidad'],
+      versionRubrica: '1.0',
+      elegible: true,
+      motivosNoElegible: [],
+      componentes: [
+        { componente: 'EXPERIENCIA', peso: 0.25, obtenido: 0.89, aporte: 22.25, brecha: 2.75 },
+      ],
+      calidad: { confianza: 0.8, requiereRevision: false, provisional: false, alertas: [] },
+      aniosTotales: null,
+      aniosRelevantes: null,
+      sectorPredominante: null,
       comentarios: 'Cumple parcialmente.',
     };
 

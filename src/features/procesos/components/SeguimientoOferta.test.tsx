@@ -18,8 +18,7 @@ const catalogoOferta = [
   {
     clave: 'INICIAR_PROCESO_CONTRATACION',
     etiqueta: 'Iniciar proceso de contratacion',
-    descripcion:
-      'El candidato acepto. El proceso de seleccion termina y arranca la contratacion.',
+    descripcion: 'El candidato acepto. El proceso de seleccion termina y arranca la contratacion.',
     categoria: 'APROBADO',
     terminal: true,
     compuertaPendiente: null,
@@ -48,11 +47,22 @@ function candidatoFinal(overrides: Partial<CandidatoDetalle> = {}): CandidatoDet
     compuertaPendiente: null,
     desgloseAfinidad: {
       porcentajeTotal: 67.5,
-      porcentajeFortalezas: 52.0,
-      porcentajeExperiencia: 64.7,
-      porcentajeEstudios: 86.7,
-      fortalezas: ['Ingles nivel B2 acreditado'],
-      debilidades: ['Sin certificacion en la herramienta principal del cargo'],
+      versionRubrica: '1.0',
+      elegible: true,
+      motivosNoElegible: [],
+      componentes: [
+        {
+          componente: 'HABILIDADES_OBLIGATORIAS',
+          peso: 0.3,
+          obtenido: 0.52,
+          aporte: 15.6,
+          brecha: 14.4,
+        },
+      ],
+      calidad: { confianza: 0.6, requiereRevision: false, provisional: false, alertas: [] },
+      aniosTotales: null,
+      aniosRelevantes: null,
+      sectorPredominante: null,
       comentarios: 'Cumple parcialmente; revisar las brechas antes de avanzar.',
     },
     integraciones: [],

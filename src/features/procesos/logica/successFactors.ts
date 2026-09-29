@@ -1,9 +1,6 @@
 /**
- * Redirección a SAP SuccessFactors para diligenciar el prefiltro telefónico:
- * el modal de prefiltro solo aprueba la compuerta `RANKING`, y el resultado
- * real de la llamada (cumple perfil, interés, aspiración salarial, …) se
- * registra en SuccessFactors, así que al confirmar se abre SuccessFactors en
- * otra pestaña.
+ * Redirección a SAP SuccessFactors, donde se diligencia el resultado real del
+ * prefiltro telefónico (cumple perfil, interés, aspiración salarial, …).
  *
  * La URL se configura por entorno (`VITE_URL_SUCCESSFACTORS`). Si no está
  * definida, no se abre nada.

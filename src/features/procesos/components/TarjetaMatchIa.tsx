@@ -1,3 +1,4 @@
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
 import Skeleton from '@mui/material/Skeleton';
@@ -6,7 +7,7 @@ import { GebEmptyState } from '@geb/ui';
 import type { DesgloseAfinidad } from '../api/candidatos';
 import { descripcionMatch } from '../logica/descripcionMatch';
 import { IndicadorAfinidad } from './IndicadorAfinidad';
-import { ListaTexto, Metrica } from './PiezasAfinidad';
+import { ListaTexto, PiezaComponentesRubrica } from './PiezasAfinidad';
 
 export interface TarjetaMatchIaProps {
   desglose: DesgloseAfinidad | null;
@@ -68,14 +69,20 @@ export function TarjetaMatchIa({ desglose, scoreAfinidad, cargando }: TarjetaMat
         sx={{ my: 1.5, height: 8, borderRadius: 4 }}
       />
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1 }}>
-        <Metrica etiqueta="Fortalezas" valor={desglose.porcentajeFortalezas} />
-        <Metrica etiqueta="Experiencia" valor={desglose.porcentajeExperiencia} />
-        <Metrica etiqueta="Estudios" valor={desglose.porcentajeEstudios} />
-      </Box>
+      {(desglose.calidad?.requiereRevision || (desglose.calidad?.alertas?.length ?? 0) > 0) && (
+        <Alert severity="warning" sx={{ mt: 1.5 }}>
+          {desglose.calidad?.alertas[0] ?? 'El resultado de afinidad requiere revisión manual.'}
+        </Alert>
+      )}
 
-      <ListaTexto titulo="Fortalezas" valores={desglose.fortalezas} />
-      <ListaTexto titulo="Debilidades" valores={desglose.debilidades} />
+      {desglose.elegible === false && (
+        <Box sx={{ mt: 1.5 }}>
+          <Alert severity="warning">No cumple los criterios mínimos de la vacante</Alert>
+          <ListaTexto titulo="Motivos" valores={desglose.motivosNoElegible} />
+        </Box>
+      )}
+
+      <PiezaComponentesRubrica componentes={desglose.componentes} />
 
       {desglose.comentarios && (
         <Box sx={{ mt: 2 }}>

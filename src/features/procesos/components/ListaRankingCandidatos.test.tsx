@@ -200,3 +200,22 @@ describe('ListaRankingCandidatos (variante simple)', () => {
     expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
   });
 });
+
+describe('ListaRankingCandidatos (variante selecta)', () => {
+  it('con compuertaPendiente fuera del enum Compuerta conocido no crashea y deja el checkbox deshabilitado', () => {
+    render(
+      <ListaRankingCandidatos
+        {...base}
+        variante="selecta"
+        respuesta={respuesta([
+          candidato('RANKING_SELECTA', {
+            esperandoDecision: true,
+            compuertaPendiente: 'VALOR_NUEVO_NO_CONOCIDO',
+          }),
+        ])}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+  });
+});

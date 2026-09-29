@@ -27,7 +27,6 @@ import {
 } from '../logica/mapaEstadosPorEtapa';
 import { mapaAtencionProveedor } from '../logica/atencionIntegraciones';
 import { PASO_INICIAL, nombrePaso } from '../logica/pipelineReclutador';
-import { abrirSuccessFactors } from '../logica/successFactors';
 import { nombreProveedor } from '../../integraciones';
 import { TablaVacantes } from '../components/TablaVacantes';
 import { TarjetaDetalleVacante } from '../components/TarjetaDetalleVacante';
@@ -221,10 +220,9 @@ export function PaginaProcesosReclutador() {
   );
 
   const confirmarPrefiltro = useCallback(async () => {
-    const resultado = await envio.enviar(seleccion.ids);
+    await envio.enviar(seleccion.ids);
     seleccion.limpiar();
     candidatos.recargar();
-    if (resultado.exitosos.length > 0) abrirSuccessFactors();
   }, [envio, seleccion, candidatos]);
 
   const cerrarModal = useCallback(() => {

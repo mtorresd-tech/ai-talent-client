@@ -102,11 +102,20 @@ const detalleCandidato = {
   ...candidato('APP-1', 'Ana Pérez', 1),
   desgloseAfinidad: {
     porcentajeTotal: 73,
-    porcentajeFortalezas: 91,
-    porcentajeExperiencia: 64,
-    porcentajeEstudios: 52,
-    fortalezas: ['Comunicación'],
-    debilidades: ['Inglés'],
+    versionRubrica: '1.0',
+    elegible: true,
+    motivosNoElegible: [],
+    componentes: [
+      {
+        componente: 'HABILIDADES_OBLIGATORIAS',
+        peso: 0.3,
+        obtenido: 0.75,
+        aporte: 22.5,
+        brecha: 7.5,
+      },
+      { componente: 'EXPERIENCIA', peso: 0.25, obtenido: 0.9, aporte: 22.5, brecha: 2.5 },
+    ],
+    calidad: { confianza: 0.71, requiereRevision: false, provisional: false, alertas: [] },
     comentarios: 'Buen perfil',
   },
   integraciones: [],
@@ -479,7 +488,7 @@ describe('PaginaProcesosReclutador', () => {
       expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-1', expect.anything()),
     );
     expect(await screen.findByText('73%')).toBeInTheDocument();
-    expect(screen.getByText('Comunicación')).toBeInTheDocument();
+    expect(screen.getByText('Habilidades obligatorias')).toBeInTheDocument();
   });
 
   it('en mobile aplica el patrón master–detail: lista → detalle → volver a la lista', async () => {
@@ -521,8 +530,9 @@ describe('PaginaProcesosReclutador', () => {
     expect(container.firstElementChild).toHaveStyle({ contain: 'inline-size' });
   });
 
-  it('envía a prefiltro con fallo parcial y recarga la lista', async () => {
+  it('envía a prefiltro con fallo parcial y recarga la lista, sin abrir SuccessFactors', async () => {
     const usuario = userEvent.setup();
+    const espiaVentana = vi.spyOn(window, 'open').mockImplementation(() => null);
     cliente.post
       .mockRejectedValueOnce(errorApi(409, 'Ya fue decidida'))
       .mockResolvedValueOnce({ estadoNuevo: 'PREFILTRO_PENDIENTE' });
@@ -539,9 +549,7 @@ describe('PaginaProcesosReclutador', () => {
     await usuario.click(screen.getByRole('button', { name: 'Prefiltro telefónico' }));
 
     const dialogo = await screen.findByRole('dialog');
-    await usuario.click(
-      within(dialogo).getByRole('button', { name: /Confirmar e ir a SuccessFactors/ }),
-    );
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
 
     await waitFor(() => expect(cliente.post).toHaveBeenCalledTimes(2));
     expect(await within(dialogo).findByText(/1 enviado, 1 con error/)).toBeInTheDocument();
@@ -550,6 +558,8 @@ describe('PaginaProcesosReclutador', () => {
       (c) => c[0] === '/vacantes/REQ-1/candidatos',
     );
     expect(llamadasCandidatos.length).toBeGreaterThanOrEqual(2);
+    expect(espiaVentana).not.toHaveBeenCalled();
+    espiaVentana.mockRestore();
   });
 
   it('muestra el nombre de la vacante seleccionada solo dentro de TarjetaDetalleVacante, sin BarraSeleccionVacante', async () => {
@@ -1054,11 +1064,19 @@ describe('PaginaProcesosReclutador · paso Oferta', () => {
     compuertaPendiente: null,
     desgloseAfinidad: {
       porcentajeTotal: 67.5,
-      porcentajeFortalezas: 52.0,
-      porcentajeExperiencia: 64.7,
-      porcentajeEstudios: 86.7,
-      fortalezas: ['Ingles nivel B2 acreditado'],
-      debilidades: ['Sin certificacion en la herramienta principal del cargo'],
+      versionRubrica: '1.0',
+      elegible: true,
+      motivosNoElegible: [],
+      componentes: [
+        {
+          componente: 'HABILIDADES_OBLIGATORIAS',
+          peso: 0.3,
+          obtenido: 0.52,
+          aporte: 15.6,
+          brecha: 14.4,
+        },
+      ],
+      calidad: { confianza: 0.6, requiereRevision: false, provisional: false, alertas: [] },
       comentarios: 'Cumple parcialmente; revisar las brechas antes de avanzar.',
     },
     integraciones: [],

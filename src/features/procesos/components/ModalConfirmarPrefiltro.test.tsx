@@ -53,11 +53,11 @@ describe('ModalConfirmarPrefiltro', () => {
     expect(onConfirmar).not.toHaveBeenCalled();
   });
 
-  it('el botón de confirmar dispara el envío y anuncia la ida a SuccessFactors', async () => {
+  it('el botón de confirmar dispara el envío', async () => {
     const onConfirmar = vi.fn();
     render(<ModalConfirmarPrefiltro {...base} onConfirmar={onConfirmar} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /Confirmar e ir a SuccessFactors/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     expect(onConfirmar).toHaveBeenCalledTimes(1);
   });
 

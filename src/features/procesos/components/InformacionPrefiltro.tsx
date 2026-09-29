@@ -83,6 +83,15 @@ export function InformacionPrefiltro({
         <Fila etiqueta="Desempeño del último año" valor={prefiltro.desempenoUltimoAnio} />
         <Fila etiqueta="Interés en continuar" valor={textoBooleano(prefiltro.interesContinuidad)} />
         <Fila etiqueta="Cumple el perfil" valor={textoBooleano(prefiltro.cumplePerfil)} />
+        <Fila etiqueta="Tiempo de vinculación" valor={prefiltro.tiempoVinculacion} />
+        <Fila
+          etiqueta="Sancionado en el último año"
+          valor={textoBooleano(prefiltro.sancionadoUltimoAnio)}
+        />
+        <Fila
+          etiqueta="Promovido en el último año"
+          valor={textoBooleano(prefiltro.promovidoUltimoAnio)}
+        />
         <Fila etiqueta="Observaciones" valor={prefiltro.observaciones} />
       </Stack>
     </Box>

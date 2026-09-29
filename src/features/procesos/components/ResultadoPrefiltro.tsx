@@ -1,17 +1,14 @@
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { GebEmptyState } from '@geb/ui';
 import type { ApiError } from '@geb/api-client';
 import type { CandidatoDetalle } from '../api/candidatos';
 import type { Prefiltro } from '../api/prefiltro';
 import { nombreCandidato } from '../logica/candidato';
 import { colorEstado, etiquetaEstado } from '../logica/etiquetasEstado';
-import { abrirSuccessFactors } from '../logica/successFactors';
 import { EstadoError } from './EstadoError';
 import { InformacionPrefiltro } from './InformacionPrefiltro';
 
@@ -90,21 +87,10 @@ export function ResultadoPrefiltro({
 
       <Box sx={{ mt: 2 }}>
         {pendiente ? (
-          <>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              El resultado del prefiltro telefónico todavía no se ha diligenciado en SAP
-              SuccessFactors. Una vez registrado allí, la información aparecerá en esta pantalla.
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<OpenInNewIcon />}
-              onClick={abrirSuccessFactors}
-              sx={{ mt: 1.5 }}
-            >
-              Abrir SuccessFactors
-            </Button>
-          </>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            El resultado del prefiltro telefónico todavía no se ha diligenciado en SAP
+            SuccessFactors. Una vez registrado allí, la información aparecerá en esta pantalla.
+          </Typography>
         ) : errorPrefiltro ? (
           <EstadoError error={errorPrefiltro} onReintentar={onReintentarPrefiltro} />
         ) : (

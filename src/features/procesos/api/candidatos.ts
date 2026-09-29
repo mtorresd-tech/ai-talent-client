@@ -1,6 +1,5 @@
 import type { GebApiClient } from '@geb/api-client';
 import type {
-  Compuerta,
   EstadoProceso,
   RespuestaPaginada,
   SincronizacionSfsf,
@@ -29,16 +28,49 @@ export interface CandidatoResumen {
   rankingPosicion: number | null;
   /** Falso si la compuerta actual está en política AUTOMATICA. */
   esperandoDecision: boolean;
-  compuertaPendiente: Compuerta | null;
+  /** El backend lo declara como texto libre, sin restringirlo a `Compuerta`. */
+  compuertaPendiente: string | null;
+}
+
+/** Dimensión de la rúbrica ponderada de afinidad. */
+export type ComponenteAfinidad = {
+  componente:
+    | 'HABILIDADES_OBLIGATORIAS'
+    | 'EXPERIENCIA'
+    | 'HABILIDADES_DESEABLES'
+    | 'FORMACION'
+    | 'SEMANTICO';
+  /** Peso de la dimensión sobre el total, escala 0-1. */
+  peso: number;
+  /** Puntaje obtenido en la dimensión, escala 0-1. */
+  obtenido: number;
+  /** Aporte de la dimensión al `porcentajeTotal`, en puntos porcentuales. */
+  aporte: number;
+  /** Brecha respecto al aporte máximo posible de la dimensión, en puntos porcentuales. */
+  brecha: number;
+};
+
+/** Señales de calidad del cálculo de afinidad. */
+export interface CalidadAfinidad {
+  /** Escala 0-1. */
+  confianza: number;
+  requiereRevision: boolean;
+  provisional: boolean;
+  alertas: string[];
 }
 
 export interface DesgloseAfinidad {
   porcentajeTotal: number;
-  porcentajeFortalezas: number | null;
-  porcentajeExperiencia: number | null;
-  porcentajeEstudios: number | null;
-  fortalezas: string[];
-  debilidades: string[];
+  versionRubrica: string | null;
+  elegible: boolean | null;
+  motivosNoElegible: string[];
+  componentes: ComponenteAfinidad[];
+  /** Coincidencias por habilidad detectadas en la hoja de vida. */
+  evidencia?: unknown[];
+  calidad: CalidadAfinidad | null;
+  aniosTotales: number | null;
+  aniosRelevantes: number | null;
+  sectorPredominante: string | null;
   comentarios: string | null;
 }
 
@@ -135,14 +167,22 @@ export function listarCandidatosDeVacante(
   );
 }
 
-export function obtenerCandidato(
+export async function obtenerCandidato(
   clienteApi: GebApiClient,
   jobApplicationId: string,
   opciones: OpcionesPeticion = {},
-) {
-  return clienteApi.get<CandidatoDetalle>(`/candidatos/${jobApplicationId}`, {
+): Promise<CandidatoDetalle> {
+  const candidato = await clienteApi.get<CandidatoDetalle>(`/candidatos/${jobApplicationId}`, {
     signal: opciones.signal,
   });
+  return {
+    ...candidato,
+    integraciones: candidato.integraciones ?? [],
+    sincronizacionSfsf: {
+      ...candidato.sincronizacionSfsf,
+      intentos: candidato.sincronizacionSfsf?.intentos ?? 0,
+    },
+  };
 }
 
 export function obtenerHistorial(
@@ -171,15 +211,6 @@ export function actualizarExtraccion(
     camposFaltantes?: string[];
     estadoNuevo: EstadoProceso | null;
   }>(`/candidatos/${jobApplicationId}/extraccion`, { campos });
-}
-
-/** Es una operación costosa: devuelve 202 y el resultado llega de forma asíncrona. */
-export function recalcularAfinidad(clienteApi: GebApiClient, jobApplicationId: string) {
-  return clienteApi.post<{
-    jobApplicationId: string;
-    correlationId: string;
-    scoreAnterior: number | null;
-  }>(`/candidatos/${jobApplicationId}/afinidad`);
 }
 
 /**
