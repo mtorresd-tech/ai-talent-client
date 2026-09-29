@@ -3,6 +3,7 @@ import { GebThemeProvider } from '@geb/ui';
 import { GebAuthProvider, type GebAuthConfig } from '@geb/auth';
 import { DevAuthProvider } from '../../shared/auth/DevAuthProvider';
 import { SesionApiProvider } from '../../shared/auth/SesionApiProvider';
+import { CATALOGO_ROLES_IA_TALENTO } from '../../shared/auth/catalogoRoles';
 import { PantallaCargaSesion } from '../../features/auth';
 
 /**
@@ -15,6 +16,8 @@ import { PantallaCargaSesion } from '../../features/auth';
  * (`crearConfiguracionMsal`) la hace por dentro. `loginAutomatico={false}`
  * evita el redirect automático a Microsoft al montar la app: el login se
  * dispara solo al presionar el botón en `PaginaInicioSesion`.
+ * `catalogoRoles` filtra los roles del token al catálogo de IA Talento
+ * (`RECLUTADOR`/`LIDER_VACANTE`) antes de exponerse en `useAuth().usuario.roles`.
  */
 const entraConfigurado = Boolean(
   import.meta.env.VITE_ENTRA_CLIENT_ID && import.meta.env.VITE_ENTRA_TENANT_ID,
@@ -36,6 +39,7 @@ export function Providers({ children }: { children: ReactNode }) {
             config={configuracionAuth}
             loginAutomatico={false}
             cargando={<PantallaCargaSesion />}
+            catalogoRoles={CATALOGO_ROLES_IA_TALENTO}
           >
             {/* @geb/auth está buildeado contra @types/react 18; el `as any` evita
                 el choque de identidad de tipos con la 19 de este repo — son dos
