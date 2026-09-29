@@ -33,7 +33,7 @@ describe('ResultadoPrefiltro', () => {
     expect(screen.getByText('Selecciona un candidato')).toBeInTheDocument();
   });
 
-  it('con estado PREFILTRO_PENDIENTE avisa que se diligencia en SuccessFactors', () => {
+  it('con estado PREFILTRO_PENDIENTE avisa que se diligencia en SuccessFactors, sin el botón de ir allá', () => {
     render(
       <ResultadoPrefiltro
         {...base}
@@ -43,7 +43,7 @@ describe('ResultadoPrefiltro', () => {
     );
 
     expect(screen.getByText(/no se ha diligenciado en SAP\s+SuccessFactors/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Abrir SuccessFactors/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Abrir SuccessFactors/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Información del prefiltro')).not.toBeInTheDocument();
   });
 
