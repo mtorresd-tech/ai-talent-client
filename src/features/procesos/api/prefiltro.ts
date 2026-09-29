@@ -10,6 +10,9 @@ export interface Prefiltro {
   /** Monto en pesos colombianos. */
   aspiracionSalarial: number | null;
   disponibilidad: string | null;
+  tiempoVinculacion: string | null;
+  sancionadoUltimoAnio: boolean | null;
+  promovidoUltimoAnio: boolean | null;
   observaciones: string | null;
   registradoPor: string | null;
   registradoEn: string;
@@ -22,18 +25,28 @@ export interface PrefiltroRequest {
   desempenoUltimoAnio?: string;
   aspiracionSalarial?: number;
   disponibilidad?: string;
+  tiempoVinculacion?: string;
+  sancionadoUltimoAnio?: boolean;
+  promovidoUltimoAnio?: boolean;
   observaciones?: string;
 }
 
 /** 404 si aún no se ha diligenciado. */
-export function obtenerPrefiltro(
+export async function obtenerPrefiltro(
   clienteApi: GebApiClient,
   jobApplicationId: string,
   opciones: OpcionesPeticion = {},
-) {
-  return clienteApi.get<Prefiltro>(`/candidatos/${jobApplicationId}/prefiltro`, {
+): Promise<Prefiltro> {
+  const prefiltro = await clienteApi.get<Prefiltro>(`/candidatos/${jobApplicationId}/prefiltro`, {
     signal: opciones.signal,
   });
+  return {
+    ...prefiltro,
+    sincronizacionSfsf: {
+      ...prefiltro.sincronizacionSfsf,
+      intentos: prefiltro.sincronizacionSfsf?.intentos ?? 0,
+    },
+  };
 }
 
 /**
