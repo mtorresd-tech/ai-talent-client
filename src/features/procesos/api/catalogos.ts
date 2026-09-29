@@ -1,5 +1,5 @@
 import type { GebApiClient } from '@geb/api-client';
-import type { CategoriaEstado, Compuerta, EstadoProceso } from '../../../shared/tipos/dominio';
+import type { CategoriaEstado, EstadoProceso } from '../../../shared/tipos/dominio';
 import type { OpcionesPeticion } from './vacantes';
 
 /**
@@ -15,8 +15,8 @@ export interface EstadoCatalogo {
   /** Única señal para el color del chip / punto de la línea de tiempo. */
   categoria: CategoriaEstado;
   terminal: boolean;
-  /** Se estrecha desde string libre del contrato al enum del frontend. */
-  compuertaPendiente: Compuerta | null;
+  /** El backend lo declara como texto libre, sin restringirlo a `Compuerta`. */
+  compuertaPendiente: string | null;
   compuertaEtiqueta: string | null;
   transicionesPermitidas: EstadoProceso[];
 }
