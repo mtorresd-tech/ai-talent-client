@@ -14,7 +14,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import type { CandidatoResumen } from '../api/candidatos';
 import { nombreCandidato } from '../logica/candidato';
 import type { ProgresoEnvio, ResultadoEnvioPrefiltro } from '../hooks/useEnviarPrefiltro';
@@ -34,8 +33,8 @@ export interface ModalConfirmarPrefiltroProps {
 /**
  * Modal de confirmación del prefiltro telefónico. Solo confirma la acción: el
  * diligenciamiento real (cumple perfil, interés, aspiración salarial, …) se
- * hace luego en SAP SuccessFactors, a donde se redirige al confirmar. Cada
- * candidato seleccionado pasa de "En ranking" a "Prefiltro pendiente".
+ * hace luego en SAP SuccessFactors. Cada candidato seleccionado pasa de "En
+ * ranking" a "Prefiltro pendiente".
  */
 export function ModalConfirmarPrefiltro({
   abierto,
@@ -63,8 +62,8 @@ export function ModalConfirmarPrefiltro({
       <DialogContent>
         <Alert severity="info" sx={{ mb: 2 }}>
           El prefiltro telefónico se diligencia en SAP SuccessFactors. Al confirmar, estos
-          candidatos pasan a "Prefiltro pendiente" y se abre SuccessFactors para registrar el
-          resultado de la llamada.
+          candidatos pasan a "Prefiltro pendiente"; luego, dirígete a SuccessFactors para registrar
+          el resultado de la llamada.
         </Alert>
 
         {!hayResultado && (
@@ -153,10 +152,9 @@ export function ModalConfirmarPrefiltro({
             <Button
               onClick={onConfirmar}
               variant="contained"
-              endIcon={<OpenInNewIcon />}
               disabled={enviando || seleccionados.length === 0}
             >
-              Confirmar e ir a SuccessFactors
+              Confirmar
             </Button>
           </>
         )}
