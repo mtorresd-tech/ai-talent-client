@@ -34,11 +34,13 @@ const detalleCandidato = {
   compuertaPendiente: 'RANKING',
   desgloseAfinidad: {
     porcentajeTotal: 80,
-    porcentajeFortalezas: 70,
-    porcentajeExperiencia: 60,
-    porcentajeEstudios: 50,
-    fortalezas: ['Comunicación'],
-    debilidades: [],
+    versionRubrica: '1.0',
+    elegible: true,
+    motivosNoElegible: [],
+    componentes: [
+      { componente: 'HABILIDADES_OBLIGATORIAS', peso: 0.3, obtenido: 0.7, aporte: 21, brecha: 9 },
+    ],
+    calidad: { confianza: 0.7, requiereRevision: false, provisional: false, alertas: [] },
     comentarios: null,
   },
   integraciones: [],
