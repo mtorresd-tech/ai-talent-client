@@ -16,7 +16,7 @@ const COLUMNAS: GebColumna<DuracionEtapa>[] = [
   { campo: 'medianaDias', titulo: 'Mediana (días)' },
   {
     campo: 'porcentajeDelTotal',
-    titulo: '% del total',
+    titulo: '% del tiempo total del proceso',
     render: (fila) => `${fila.porcentajeDelTotal}%`,
   },
 ];
