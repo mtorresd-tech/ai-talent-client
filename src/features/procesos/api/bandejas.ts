@@ -26,23 +26,31 @@ export interface ResumenBandeja {
   masAntiguo: string | null;
 }
 
+export interface ExperienciaInforme {
+  cargo: string;
+  compania: string | null;
+  funciones: string | null;
+  fechaInicio: string | null;
+  /** `null` indica que es el cargo actual del candidato. */
+  fechaFin: string | null;
+}
+
+export interface EstudioInforme {
+  nivelAcademico: string;
+  /** Título tal cual lo carga el candidato, p. ej. "Ingeniero en Telecomunicaciones". */
+  nombreEstudio: string | null;
+  institucion: string | null;
+}
+
 export interface InformeIncognito {
   alias: string;
   generadoEn: string;
   aniosExperienciaTotal: number | null;
   nivelAcademicoMaximo: string | null;
-  /**
-   * Experiencia laboral extraída de la hoja de vida. El contrato la declara como
-   * un arreglo de objetos abiertos sin esquema y con `default: []`, por lo que
-   * puede llegar ausente.
-   */
-  experiencia?: Record<string, unknown>[];
-  /**
-   * Formación académica extraída de la hoja de vida. Mismo tratamiento que
-   * `experiencia`: objeto abierto sin esquema, `default: []`, puede llegar
-   * ausente.
-   */
-  estudios?: Record<string, unknown>[];
+  /** Experiencia laboral extraída de la hoja de vida. `default: []` en el contrato, puede llegar ausente. */
+  experiencia?: ExperienciaInforme[];
+  /** Formación académica extraída de la hoja de vida. `default: []` en el contrato, puede llegar ausente. */
+  estudios?: EstudioInforme[];
   /** Competencias declaradas. `default: []` en el contrato, puede llegar ausente. */
   competencias?: string[];
   /** Desglose de afinidad generado por IA, o `null` si aún no se calculó. */
