@@ -19,8 +19,6 @@ function candidato(estado: CandidatoDetalle['estado']): CandidatoDetalle {
 }
 
 const prefiltro = {
-  aspiracionSalarial: 5500000,
-  disponibilidad: 'Inmediata',
   desempenoUltimoAnio: 'Sobresaliente',
   interesContinuidad: true,
   cumplePerfil: true,
@@ -57,8 +55,7 @@ describe('ResultadoPrefiltro', () => {
     );
 
     expect(screen.getByText('Información del prefiltro')).toBeInTheDocument();
-    expect(screen.getByText(/5\.500\.000/)).toBeInTheDocument();
-    expect(screen.getByText('Inmediata')).toBeInTheDocument();
+    expect(screen.getByText('Sobresaliente')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Abrir SuccessFactors/i })).not.toBeInTheDocument();
   });
 
