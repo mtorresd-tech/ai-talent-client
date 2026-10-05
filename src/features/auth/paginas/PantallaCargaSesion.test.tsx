@@ -9,6 +9,6 @@ describe('PantallaCargaSesion', () => {
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
     expect(screen.getByText('Cargando tu sesión…')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('IA Talento');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Selecta 2.0');
   });
 });
