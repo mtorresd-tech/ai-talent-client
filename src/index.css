@@ -8,3 +8,16 @@ body,
 body {
   font-family: 'Fira Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
 }
+
+/*
+ * Altura mínima de viewport segura para mobile: `100vh` resuelve contra el
+ * viewport "layout" (incluye el área que tapa la barra de direcciones del
+ * navegador), dejando espacio en blanco o scroll extraño. `100dvh` resuelve
+ * contra el viewport visual real. Se declara dos veces a propósito: la
+ * segunda gana cuando el navegador soporta `dvh`, y la primera queda como
+ * fallback en los que no.
+ */
+.altura-viewport-segura {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
