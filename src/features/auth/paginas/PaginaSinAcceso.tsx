@@ -5,7 +5,7 @@ import { useSesionApi } from '../../../shared/auth/SesionApiContext';
 
 /**
  * Pantalla mostrada a una persona autenticada en Entra ID cuya cuenta no
- * tiene el rol de Reclutador ni de Líder de área asignado en IA Talento —
+ * tiene el rol de Reclutador ni de Líder de área asignado en Selecta 2.0 —
  * ya sea porque nunca lo tuvo, o porque una petición a la API respondió 403
  * durante una sesión ya iniciada. Bloquea el acceso a `AppLayout` y a toda
  * ruta de la aplicación.
@@ -20,10 +20,13 @@ export function PaginaSinAcceso() {
   };
 
   return (
-    <Stack sx={{ minHeight: '100vh', alignItems: 'center', justifyContent: 'center', px: 2 }}>
+    <Stack
+      className="altura-viewport-segura"
+      sx={{ alignItems: 'center', justifyContent: 'center', px: 2 }}
+    >
       <Box sx={{ width: '100%', maxWidth: 480 }}>
         <GebErrorState
-          titulo="Tu cuenta no tiene acceso a IA Talento"
+          titulo="Tu cuenta no tiene acceso a Selecta 2.0"
           descripcion="No tienes un rol asignado en la aplicación. Contacta al administrador de tu empresa para que te asigne el rol de Reclutador o Líder de área."
         />
         <Stack sx={{ alignItems: 'center' }}>
