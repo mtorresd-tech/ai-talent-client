@@ -35,10 +35,10 @@ describe('PaginaInicioSesion — modo real', () => {
   it('renderiza título, subtítulo, botón de Entra ID y pie de contacto en estado no-autenticado', () => {
     renderPagina('no-autenticado', null);
 
-    // "IA Talento" va en un `<span>` propio dentro del `<h2>` (coloreado en
+    // "Selecta 2.0" va en un `<span>` propio dentro del `<h2>` (coloreado en
     // azul de marca); se verifica el texto combinado del heading en vez de
     // buscar la cadena exacta, que podría fallar por cómo se parte el markup.
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Bienvenido a IA Talento');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Bienvenido a Selecta 2.0');
     expect(screen.getByText('Inicia sesión para continuar')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Iniciar sesión con Microsoft Entra ID' }),
@@ -86,9 +86,7 @@ describe('PaginaInicioSesion — modo desarrollo', () => {
 
     expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('Cambiar entre Reclutador y Líder de área'),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Cambiar entre Reclutador y Líder de área')).toBeInTheDocument();
     expect(screen.getByText('Reclutador')).toBeInTheDocument();
     expect(screen.getByText('Líder de área')).toBeInTheDocument();
     expect(
@@ -126,7 +124,7 @@ describe('PaginaInicioSesion — PanelHeroLogin', () => {
   it('renderiza el título, el subtítulo y los 3 puntos de beneficio', () => {
     renderPagina('no-autenticado', null);
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('IA Talento');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Selecta 2.0');
     expect(
       screen.getByText('Plataforma de automatización de selección con IA.'),
     ).toBeInTheDocument();
@@ -161,7 +159,7 @@ describe('PaginaInicioSesion — integración', () => {
     expect(
       screen.getByRole('button', { name: 'Iniciar sesión con Microsoft Entra ID' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('IA Talento');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Selecta 2.0');
 
     rerender(
       <GebAuthContext.Provider value={auth('no-autenticado')}>
@@ -176,6 +174,6 @@ describe('PaginaInicioSesion — integración', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
     // El panel izquierdo (mismo contenido estático) sigue montado sin cambios.
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('IA Talento');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Selecta 2.0');
   });
 });
