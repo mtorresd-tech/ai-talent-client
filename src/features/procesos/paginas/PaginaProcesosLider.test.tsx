@@ -474,4 +474,55 @@ describe('PaginaProcesosLider', () => {
     expect(within(dialogo).getByRole('button', { name: 'Rechazar' })).toBeDisabled();
     expect(cliente.post).not.toHaveBeenCalled();
   });
+
+  describe('llegada desde una notificación (?candidato)', () => {
+    const informeDirecto = {
+      alias: 'Candidato directo',
+      generadoEn: '2026-08-20T00:00:00Z',
+      aniosExperienciaTotal: 3.2,
+      nivelAcademicoMaximo: 'Profesional',
+      experiencia: [],
+      estudios: [],
+      competencias: ['Excel'],
+      desgloseAfinidad: null,
+    };
+
+    it('con ?vacante y ?candidato y GET informe-incognito en 200, abre el modal con ese informe', async () => {
+      cliente.get.mockImplementation((url: string) => {
+        if (url === '/vacantes') return Promise.resolve(listaVacantes);
+        if (url === '/vacantes/REQ-0001/informes-incognito')
+          return Promise.resolve(listaInformesReq1);
+        if (url === '/vacantes/REQ-0001/candidatos') return Promise.resolve(listaCandidatosReq1);
+        if (url === '/candidatos/ja_1/informe-incognito') return Promise.resolve(informeDirecto);
+        return Promise.reject(new Error(`URL no mockeada: ${url}`));
+      });
+
+      renderPagina(<PaginaProcesosLider />, '/procesos?vacante=REQ-0001&candidato=ja_1');
+
+      const dialogo = await screen.findByRole('dialog');
+      expect(within(dialogo).getByText('Candidato directo')).toBeInTheDocument();
+      expect(within(dialogo).getByRole('button', { name: 'Aprobar' })).toBeEnabled();
+    });
+
+    it('con ?vacante y ?candidato y GET informe-incognito en 409, muestra el aviso y no abre el modal', async () => {
+      cliente.get.mockImplementation((url: string) => {
+        if (url === '/vacantes') return Promise.resolve(listaVacantes);
+        if (url === '/vacantes/REQ-0001/informes-incognito')
+          return Promise.resolve(listaInformesReq1);
+        if (url === '/vacantes/REQ-0001/candidatos') return Promise.resolve(listaCandidatosReq1);
+        if (url === '/candidatos/ja_2/informe-incognito') {
+          return Promise.reject(errorApi(409, 'El informe aún no ha sido generado'));
+        }
+        return Promise.reject(new Error(`URL no mockeada: ${url}`));
+      });
+
+      renderPagina(<PaginaProcesosLider />, '/procesos?vacante=REQ-0001&candidato=ja_2');
+
+      expect(
+        await screen.findByText('El informe de este candidato aún no está listo para revisión.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(await screen.findByText('Analista de Datos')).toBeInTheDocument();
+    });
+  });
 });
