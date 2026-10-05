@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,9 +12,12 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
+import { GebEmptyState } from '@geb/ui';
 import type { ApiError } from '@geb/api-client';
-import type { InformeIncognito } from '../api/bandejas';
+import type { EstudioInforme, ExperienciaInforme, InformeIncognito } from '../api/bandejas';
 import { formatearFechaHora } from '../logica/formatoFecha';
+import { formatearRangoExperiencia } from '../logica/formatoRangoExperiencia';
+import { agrupaEstudios } from '../logica/agrupaEstudios';
 import { TarjetaMatchIa } from './TarjetaMatchIa';
 
 export interface ModalInformeIncognitoProps {
@@ -30,16 +33,74 @@ export interface ModalInformeIncognitoProps {
   onCerrar: () => void;
 }
 
-function textoContador(cantidad: number, singular: string, plural: string): string {
-  return `${cantidad} ${cantidad === 1 ? singular : plural}`;
+/** Valores únicos de `competencias`, si hay alguno; si no, la fila no se muestra. */
+function areasDelResumen(competencias: string[]): { etiqueta: string; valores: string[] } | null {
+  if (competencias.length === 0) return null;
+  return { etiqueta: 'Áreas', valores: [...new Set(competencias)] };
+}
+
+/** Título de sección del modal: mismo peso visual en "Resumen", "Formación académica", etc. */
+function TituloSeccion({ children }: { children: string }) {
+  return (
+    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+      {children}
+    </Typography>
+  );
+}
+
+/** Etiqueta pequeña sobre su valor, igual al patrón de `InformacionPrefiltro.tsx`. */
+function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+        {etiqueta}
+      </Typography>
+      <Typography variant="body2">{valor}</Typography>
+    </Box>
+  );
+}
+
+/** Tarjeta con borde para un ítem de experiencia o formación — límite visual claro entre ítems. */
+function TarjetaItem({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.25, minWidth: 0 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>
+        {titulo}
+      </Typography>
+      <Stack spacing={0.75}>{children}</Stack>
+    </Box>
+  );
+}
+
+function ItemExperiencia({ experiencia }: { experiencia: ExperienciaInforme }) {
+  return (
+    <TarjetaItem titulo={experiencia.cargo}>
+      {experiencia.compania && <Fila etiqueta="Compañía" valor={experiencia.compania} />}
+      <Fila
+        etiqueta="Periodo"
+        valor={formatearRangoExperiencia(experiencia.fechaInicio, experiencia.fechaFin)}
+      />
+      {experiencia.funciones && <Fila etiqueta="Funciones" valor={experiencia.funciones} />}
+    </TarjetaItem>
+  );
+}
+
+function ItemEstudio({ estudio }: { estudio: EstudioInforme }) {
+  return (
+    <TarjetaItem titulo={estudio.nombreEstudio ?? 'Formación académica'}>
+      <Fila etiqueta="Nivel académico" valor={estudio.nivelAcademico} />
+      {estudio.institucion && <Fila etiqueta="Institución" valor={estudio.institucion} />}
+    </TarjetaItem>
+  );
 }
 
 /**
  * Modal del informe anonimizado: cabecera con el alias y la fecha de
- * generación, resumen de experiencia y nivel académico, competencias,
- * contadores de experiencia/estudios, el desglose de afinidad generado por IA
- * y, debajo, la sección de decisión (aprobar o rechazar al candidato con un
- * único campo de comentario, obligatorio solo al rechazar).
+ * generación, resumen de experiencia, nivel académico y áreas, formación
+ * académica agrupada, experiencia profesional completa, competencias, el
+ * desglose de afinidad generado por IA y, debajo, la sección de decisión
+ * (aprobar o rechazar al candidato con un único campo de comentario,
+ * obligatorio solo al rechazar).
  */
 export function ModalInformeIncognito({
   abierto,
@@ -71,6 +132,8 @@ export function ModalInformeIncognito({
   const tieneResumen =
     informe != null &&
     (informe.aniosExperienciaTotal !== null || informe.nivelAcademicoMaximo !== null);
+  const areas = informe ? areasDelResumen(competencias) : null;
+  const gruposEstudios = agrupaEstudios(estudios);
 
   const candidatoNoIdentificado = jobApplicationId === null;
   const comentarioLimpio = comentario.trim();
@@ -109,47 +172,74 @@ export function ModalInformeIncognito({
           </DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2}>
-              {tieneResumen && (
-                <Stack spacing={0.5}>
-                  {informe.aniosExperienciaTotal !== null && (
-                    <Typography variant="body2">
-                      <strong>Experiencia total:</strong> {informe.aniosExperienciaTotal} años
-                    </Typography>
-                  )}
-                  {informe.nivelAcademicoMaximo !== null && (
-                    <Typography variant="body2">
-                      <strong>Nivel académico máximo:</strong> {informe.nivelAcademicoMaximo}
-                    </Typography>
-                  )}
+              {(tieneResumen || areas) && (
+                <Stack spacing={1}>
+                  <TituloSeccion>Resumen</TituloSeccion>
+                  <Stack spacing={0.75}>
+                    {informe.aniosExperienciaTotal !== null && (
+                      <Fila
+                        etiqueta="Experiencia total"
+                        valor={`${informe.aniosExperienciaTotal} años`}
+                      />
+                    )}
+                    {informe.nivelAcademicoMaximo !== null && (
+                      <Fila
+                        etiqueta="Nivel académico máximo"
+                        valor={informe.nivelAcademicoMaximo}
+                      />
+                    )}
+                    {areas && <Fila etiqueta={areas.etiqueta} valor={areas.valores.join(', ')} />}
+                  </Stack>
                 </Stack>
               )}
 
+              <Stack spacing={1}>
+                <TituloSeccion>Formación académica</TituloSeccion>
+                {gruposEstudios.length === 0 ? (
+                  <GebEmptyState titulo="Sin estudios registrados" />
+                ) : (
+                  <Stack spacing={1.5}>
+                    {gruposEstudios.map((grupo) => (
+                      <Box key={grupo.grupo}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 700, color: 'text.secondary', mb: 0.75 }}
+                        >
+                          {grupo.titulo}
+                        </Typography>
+                        <Stack spacing={1}>
+                          {grupo.estudios.map((estudio, indice) => (
+                            <ItemEstudio key={indice} estudio={estudio} />
+                          ))}
+                        </Stack>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+
+              <Stack spacing={1}>
+                <TituloSeccion>Experiencia profesional</TituloSeccion>
+                {experiencia.length === 0 ? (
+                  <GebEmptyState titulo="Sin experiencia registrada" />
+                ) : (
+                  <Stack spacing={1}>
+                    {experiencia.map((item, indice) => (
+                      <ItemExperiencia key={indice} experiencia={item} />
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+
               {competencias.length > 0 && (
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    Competencias
-                  </Typography>
+                <Stack spacing={1}>
+                  <TituloSeccion>Competencias</TituloSeccion>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {competencias.map((competencia) => (
                       <Chip key={competencia} size="small" label={competencia} />
                     ))}
                   </Box>
-                </Box>
-              )}
-
-              {experiencia.length > 0 && (
-                <Typography variant="body2">
-                  {textoContador(
-                    experiencia.length,
-                    'experiencia registrada',
-                    'experiencias registradas',
-                  )}
-                </Typography>
-              )}
-              {estudios.length > 0 && (
-                <Typography variant="body2">
-                  {textoContador(estudios.length, 'estudio registrado', 'estudios registrados')}
-                </Typography>
+                </Stack>
               )}
 
               <TarjetaMatchIa
