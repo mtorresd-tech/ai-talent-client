@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
@@ -13,6 +13,7 @@ import { useVacantesConInformesIncognito } from '../hooks/useVacantesConInformes
 import { useInformesIncognito } from '../hooks/useInformesIncognito';
 import { useCandidatosEnRevisionLider } from '../hooks/useCandidatosEnRevisionLider';
 import { useDecisionLider } from '../hooks/useDecisionLider';
+import { useInformeIncognitoDirecto } from '../hooks/useInformeIncognitoDirecto';
 import { GuiaEvaluacionInformes } from '../components/GuiaEvaluacionInformes';
 import { TablaVacantesLider } from '../components/TablaVacantesLider';
 import { TablaInformesIncognito } from '../components/TablaInformesIncognito';
@@ -29,7 +30,9 @@ const TAMANO_PAGINA_INICIAL = 5;
  * informes anonimizados. El ícono de ojo de cada fila abre el informe en un
  * modal (estado local, sin navegación) desde donde el líder aprueba o rechaza
  * al candidato. La vacante seleccionada se refleja en el query param
- * `?vacante`.
+ * `?vacante`. Una notificación también puede llegar con `?candidato`: ese
+ * caso pide el informe directo por `jobApplicationId` (sin pasar por la
+ * tabla) y abre el modal apenas resuelve.
  */
 export function PaginaProcesosLider() {
   const clienteApi = useClienteApi();
@@ -43,8 +46,10 @@ export function PaginaProcesosLider() {
   );
   const [paginaInformes, setPaginaInformes] = useState(0);
   const [tamanoPaginaInformes, setTamanoPaginaInformes] = useState(TAMANO_PAGINA_INICIAL);
-  const [informeSeleccionado, setInformeSeleccionado] = useState<InformeIncognito | null>(null);
-  const [modalAbierto, setModalAbierto] = useState(false);
+  const [informeSeleccionadoDeTabla, setInformeSeleccionadoDeTabla] =
+    useState<InformeIncognito | null>(null);
+  const [modalAbiertoDeTabla, setModalAbiertoDeTabla] = useState(false);
+  const [jobApplicationIdDirecto, setJobApplicationIdDirecto] = useState<string | null>(null);
 
   const vacantes = useVacantesConInformesIncognito(
     clienteApi,
@@ -60,6 +65,58 @@ export function PaginaProcesosLider() {
   );
   const candidatosEnRevision = useCandidatosEnRevisionLider(clienteApi, vacanteId);
   const decisionLider = useDecisionLider(clienteApi);
+  const informeDirecto = useInformeIncognitoDirecto(clienteApi, jobApplicationIdDirecto);
+
+  // Detecta `?candidato` (llegada desde una notificación): selecciona la
+  // vacante si cambió y dispara la carga directa del informe. El estado se
+  // ajusta durante el propio render (no en un efecto) para reaccionar a
+  // cambios de `searchParams` más allá del montaje — p. ej. abrir la campana
+  // ya estando en esta misma página — sin disparar un round-trip adicional.
+  const [candidatoParamProcesado, setCandidatoParamProcesado] = useState<string | null>(null);
+  const candidatoParam = searchParams.get('candidato');
+  if (candidatoParam && candidatoParam !== candidatoParamProcesado) {
+    setCandidatoParamProcesado(candidatoParam);
+    const vacanteParam = searchParams.get('vacante');
+    if (vacanteParam && vacanteParam !== vacanteId) {
+      setVacanteId(vacanteParam);
+      setPaginaInformes(0);
+    }
+    setJobApplicationIdDirecto(candidatoParam);
+  }
+
+  // El informe/modal/aviso de la llegada directa se derivan en el propio
+  // render a partir de `informeDirecto`, sin copiarlos a estado propio: nunca
+  // quedan desincronizados de la petición en curso.
+  const informeSeleccionado =
+    jobApplicationIdDirecto !== null ? informeDirecto.datos : informeSeleccionadoDeTabla;
+  const modalAbierto =
+    jobApplicationIdDirecto !== null ? informeDirecto.datos !== null : modalAbiertoDeTabla;
+  const avisoInformeNoListo =
+    jobApplicationIdDirecto !== null && informeDirecto.error?.problem.status === 409;
+
+  // Limpia `?candidato` una vez la carga directa resuelve (éxito o error),
+  // para que un refresh de página no vuelva a dispararla. Solo sincroniza con
+  // el router — no fija estado propio — así que puede vivir en un efecto.
+  useEffect(() => {
+    if (jobApplicationIdDirecto === null) return;
+    if (informeDirecto.cargando) return;
+    if (informeDirecto.datos === null && informeDirecto.error === null) return;
+
+    setSearchParams(
+      (previos) => {
+        const siguiente = new URLSearchParams(previos);
+        siguiente.delete('candidato');
+        return siguiente;
+      },
+      { replace: true },
+    );
+  }, [
+    jobApplicationIdDirecto,
+    informeDirecto.cargando,
+    informeDirecto.datos,
+    informeDirecto.error,
+    setSearchParams,
+  ]);
 
   const buscarVacantes = useCallback((texto: string) => {
     setBusquedaVacantes(texto);
@@ -86,24 +143,32 @@ export function PaginaProcesosLider() {
   }, []);
 
   const verInforme = useCallback((informe: InformeIncognito) => {
-    setInformeSeleccionado(informe);
-    setModalAbierto(true);
+    setJobApplicationIdDirecto(null);
+    setInformeSeleccionadoDeTabla(informe);
+    setModalAbiertoDeTabla(true);
   }, []);
 
   // Solo se baja la bandera: el informe se conserva para que el contenido no
   // parpadee durante la animación de cierre; la próxima apertura lo reemplaza.
+  // También libera el `jobApplicationId` directo, para que la próxima
+  // apertura desde la tabla vuelva a resolverlo por alias.
   const cerrarModal = useCallback(() => {
-    setModalAbierto(false);
+    setModalAbiertoDeTabla(false);
+    setJobApplicationIdDirecto(null);
   }, []);
 
-  const jobApplicationId = candidatosEnRevision.mapa.get(informeSeleccionado?.alias ?? '') ?? null;
+  const jobApplicationId =
+    jobApplicationIdDirecto ??
+    candidatosEnRevision.mapa.get(informeSeleccionado?.alias ?? '') ??
+    null;
 
   const decidir = useCallback(
     async (decision: 'APRUEBA' | 'RECHAZA', motivo?: string, comentario?: string) => {
       if (jobApplicationId === null) return;
       const resultado = await decisionLider.decidir(jobApplicationId, decision, motivo, comentario);
       if (resultado) {
-        setModalAbierto(false);
+        setModalAbiertoDeTabla(false);
+        setJobApplicationIdDirecto(null);
         informes.recargar();
         candidatosEnRevision.recargar();
       }
@@ -133,6 +198,12 @@ export function PaginaProcesosLider() {
         La información presentada está anonimizada. La identidad de la persona candidata permanecerá
         oculta hasta finalizar su decisión.
       </Alert>
+
+      {avisoInformeNoListo && (
+        <Alert severity="warning" onClose={() => setJobApplicationIdDirecto(null)}>
+          El informe de este candidato aún no está listo para revisión.
+        </Alert>
+      )}
 
       <Typography variant="body2">
         Sus vacantes con finalistas asignados — seleccione una para evaluar sus informes:
