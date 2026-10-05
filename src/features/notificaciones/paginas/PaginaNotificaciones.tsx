@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import { useAuth } from '@geb/auth';
@@ -7,8 +6,7 @@ import { EncabezadoPagina } from '../../../shared/components/EncabezadoPagina';
 import { useClienteApi } from '../../../shared/api/clienteApi';
 import { ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
 import { useNotificaciones } from '../hooks/useNotificaciones';
-import { useMarcarNotificacionLeida } from '../hooks/useMarcarNotificacionLeida';
-import { rutaNotificacion } from '../logica/rutaNotificacion';
+import { useAbrirNotificacion } from '../hooks/useAbrirNotificacion';
 import type { Notificacion } from '../api/notificaciones';
 import { FiltroLeidas, type ValorFiltroLeidas } from '../componentes/FiltroLeidas';
 import { ListaNotificaciones } from '../componentes/ListaNotificaciones';
@@ -21,12 +19,11 @@ function leidaDelFiltro(filtro: ValorFiltroLeidas): boolean | undefined {
 
 /**
  * Bandeja de notificaciones, visible en ambos portales. La navegación al
- * hacer clic en un ítem depende del rol de quien la ve (`rutaNotificacion`),
- * no del tipo de la notificación.
+ * hacer clic en un ítem depende del rol de quien la ve y del tipo de la
+ * notificación (`useAbrirNotificacion`).
  */
 export function PaginaNotificaciones() {
   const clienteApi = useClienteApi();
-  const navigate = useNavigate();
   const { usuario } = useAuth();
   const esReclutador = usuario?.roles.includes(ROL_RECLUTADOR) ?? false;
 
@@ -34,25 +31,19 @@ export function PaginaNotificaciones() {
   const [avisoError, setAvisoError] = useState<string | null>(null);
 
   const consulta = useNotificaciones(clienteApi, { leida: leidaDelFiltro(filtro) });
-  const { notificaciones, marcarLeida } = useMarcarNotificacionLeida(clienteApi, consulta.datos);
+  const { abrir } = useAbrirNotificacion(clienteApi, esReclutador);
 
   const alClicItem = useCallback(
     async (notificacion: Notificacion) => {
       setAvisoError(null);
-      const ruta = rutaNotificacion(notificacion, esReclutador);
-
-      if (!notificacion.leida) {
-        try {
-          await marcarLeida(notificacion.id);
-        } catch {
-          setAvisoError('No se pudo marcar la notificación como leída. Vuelve a intentarlo.');
-          return;
-        }
+      try {
+        await abrir(notificacion);
+        consulta.recargar();
+      } catch {
+        setAvisoError('No se pudo marcar la notificación como leída. Vuelve a intentarlo.');
       }
-
-      if (ruta) navigate(ruta);
     },
-    [esReclutador, marcarLeida, navigate],
+    [abrir, consulta],
   );
 
   return (
@@ -71,7 +62,7 @@ export function PaginaNotificaciones() {
       )}
 
       <ListaNotificaciones
-        notificaciones={consulta.datos ? notificaciones : null}
+        notificaciones={consulta.datos}
         cargando={consulta.cargando}
         error={consulta.error}
         onReintentar={consulta.recargar}
