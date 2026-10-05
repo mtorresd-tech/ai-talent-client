@@ -22,6 +22,10 @@ const PUNTOS_BENEFICIO = [
   },
 ] as const;
 
+/** Gradiente de marca del panel de autenticación, compartido con `LayoutAutenticacion`. */
+export const GRADIENTE_MARCA_LOGIN =
+  'linear-gradient(160deg, #e7f2e2 0%, #f4f8f1 45%, #ffffff 100%)';
+
 /** Panel izquierdo de marca de la pantalla de inicio de sesión, visible desde `md`. */
 export function PanelHeroLogin() {
   return (
@@ -34,7 +38,7 @@ export function PanelHeroLogin() {
         px: { md: '72px' },
         pt: { md: '40px' },
         pb: { md: '140px' },
-        background: 'linear-gradient(160deg, #e7f2e2 0%, #f4f8f1 45%, #ffffff 100%)',
+        background: GRADIENTE_MARCA_LOGIN,
       }}
     >
       <Box
@@ -70,7 +74,7 @@ export function PanelHeroLogin() {
           mb: '14px',
         }}
       >
-        IA Talento
+        Selecta 2.0
       </Typography>
       <Typography
         sx={{
