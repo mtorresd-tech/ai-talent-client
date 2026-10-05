@@ -66,6 +66,9 @@ export function ItemNotificacion({ notificacion, esReclutable, onClic }: ItemNot
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           {formatearFechaHora(notificacion.creadaEn)}
         </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          Vacante {notificacion.jobRequisitionId} · Candidato {notificacion.jobApplicationId}
+        </Typography>
       </Stack>
       {esReclutable && (
         <ChevronRightIcon
