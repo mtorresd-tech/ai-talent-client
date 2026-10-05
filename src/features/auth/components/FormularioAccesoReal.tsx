@@ -17,7 +17,10 @@ export function FormularioAccesoReal({ estado, onIniciarSesion }: FormularioAcce
           component="h2"
           sx={{ color: 'text.primary', fontSize: '34px', lineHeight: '42px', fontWeight: 700 }}
         >
-          Bienvenido a <Box component="span" sx={{ color: 'primary.main' }}>IA Talento</Box>
+          Bienvenido a{' '}
+          <Box component="span" sx={{ color: 'primary.main' }}>
+            Selecta 2.0
+          </Box>
         </Typography>
         <Typography variant="subtitle1" sx={{ color: 'text.secondary', mt: 0.5 }}>
           Inicia sesión para continuar
