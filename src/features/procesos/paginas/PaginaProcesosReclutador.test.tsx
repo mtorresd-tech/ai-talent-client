@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import {
   crearClienteApiFalso,
@@ -30,6 +30,12 @@ function renderPagina(ui: ReactElement, rutaInicial = '/procesos') {
 function MostrarUbicacion() {
   const ubicacion = useLocation();
   return <div data-testid="ubicacion">{`${ubicacion.pathname}${ubicacion.search}`}</div>;
+}
+
+/** Simula el `navigate()` que dispara una notificación hacia otra selección, sin remontar la página. */
+function BotonNavegarA({ ruta }: { ruta: string }) {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(ruta)}>Simular clic en notificación</button>;
 }
 
 const vacante = {
@@ -592,6 +598,66 @@ describe('PaginaProcesosReclutador', () => {
       expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-1', expect.anything()),
     );
     expect(await screen.findByText('73%')).toBeInTheDocument();
+  });
+
+  it('ya montada, un navigate a otra vacante/paso/candidato resincroniza el estado sin remount', async () => {
+    const detalleVacante2 = {
+      ...detalleVacante,
+      jobRequisitionId: 'REQ-2',
+      titulo: 'Otra Vacante',
+    };
+
+    cliente.get.mockImplementation(
+      (url: string, config?: { params?: { estado?: string[]; proveedor?: string } }) => {
+        if (url === '/vacantes') {
+          return Promise.resolve({
+            data: [vacante],
+            meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+          });
+        }
+        if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
+        if (url === '/vacantes/REQ-2') return Promise.resolve(detalleVacante2);
+        if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+        if (url === '/vacantes/REQ-1/candidatos') return Promise.resolve(listaCandidatos);
+        if (url === '/vacantes/REQ-2/candidatos') {
+          const estados = config?.params?.estado ?? [];
+          if (estados.includes('EN_PRUEBAS_BLUESITE')) return Promise.resolve(listaBluesite);
+          return Promise.resolve(listaCandidatos);
+        }
+        if (url === '/candidatos/APP-1') return Promise.resolve(detalleCandidato);
+        if (url === '/candidatos/APP-30') return Promise.resolve(detalleBluesite);
+        return Promise.reject(new Error(`URL no mockeada: ${url}`));
+      },
+    );
+
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <BotonNavegarA ruta="/procesos?vacante=REQ-2&paso=BLUESITE&candidato=APP-30" />
+        <MostrarUbicacion />
+      </>,
+      '/procesos?vacante=REQ-1&paso=SELECTA&candidato=APP-1',
+    );
+
+    await screen.findByText('73%');
+
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole('button', { name: 'Simular clic en notificación' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos?vacante=REQ-2&paso=BLUESITE&candidato=APP-30',
+    );
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-2', expect.anything()),
+    );
+    await waitFor(() =>
+      expect(cliente.get).toHaveBeenCalledWith('/candidatos/APP-30', expect.anything()),
+    );
+    // "Carla Ramos" aparece a la vez en la fila de la lista y en el panel de
+    // detalle (layout maestro-detalle en escritorio): basta confirmar que el
+    // panel de Bluesite está activo y que el detalle de Selecta desapareció.
+    expect((await screen.findAllByText('Carla Ramos')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('73%')).not.toBeInTheDocument();
   });
 });
 
