@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth, RequireRole, hasAnyRole } from '@geb/auth';
 import { AppLayout } from './layout/AppLayout';
 import { PaginaInicioSesion, PantallaCargaSesion, PaginaSinAcceso } from '../features/auth';
@@ -7,10 +8,29 @@ import { PaginaMetricas } from '../features/metricas';
 import { PaginaNotificaciones } from '../features/notificaciones';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../shared/tipos/dominio';
 import { useSesionApi } from '../shared/auth/SesionApiContext';
+import { leerYLimpiarRutaDestino } from '../shared/auth/rutaDestinoLogin';
 
 export function AppRouter() {
   const { estado, usuario } = useAuth();
   const { sesionSinRol } = useSesionApi();
+  const navigate = useNavigate();
+
+  const autenticadoConRol =
+    estado === 'autenticado' &&
+    hasAnyRole(usuario?.roles, [ROL_RECLUTADOR, ROL_LIDER]) &&
+    !sesionSinRol;
+
+  // Restaura, una sola vez, la ruta profunda guardada antes del login (ver
+  // `PaginaInicioSesion`) — `leerYLimpiarRutaDestino` es de un solo uso, así
+  // que renders posteriores con `autenticadoConRol` en `true` no vuelven a
+  // navegar.
+  useEffect(() => {
+    if (!autenticadoConRol) return;
+    const rutaGuardada = leerYLimpiarRutaDestino();
+    if (rutaGuardada) {
+      navigate(rutaGuardada, { replace: true });
+    }
+  }, [autenticadoConRol, navigate]);
 
   if (estado === 'cargando') return <PantallaCargaSesion />;
 
@@ -18,7 +38,7 @@ export function AppRouter() {
     return <PaginaInicioSesion />;
   }
 
-  if (!hasAnyRole(usuario?.roles, [ROL_RECLUTADOR, ROL_LIDER]) || sesionSinRol) {
+  if (!autenticadoConRol) {
     return <PaginaSinAcceso />;
   }
 
