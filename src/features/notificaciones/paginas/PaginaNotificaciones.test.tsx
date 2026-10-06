@@ -10,6 +10,7 @@ import {
 } from '../../../test/clienteApiFalso';
 import { renderConTema } from '../../../test/renderConTema';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
+import type { Notificacion } from '../api/notificaciones';
 import { PaginaNotificaciones } from './PaginaNotificaciones';
 
 const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | null }));
@@ -32,7 +33,7 @@ function auth(roles: string[]): GebAuthContextValue {
 
 function MostrarUbicacion() {
   const ubicacion = useLocation();
-  return <div data-testid="ubicacion">{ubicacion.pathname}</div>;
+  return <div data-testid="ubicacion">{`${ubicacion.pathname}${ubicacion.search}`}</div>;
 }
 
 function renderPagina(roles: string[]) {
@@ -42,31 +43,23 @@ function renderPagina(roles: string[]) {
         <MostrarUbicacion />
         <Routes>
           <Route path="/notificaciones" element={<PaginaNotificaciones />} />
-          <Route
-            path="/procesos/candidato/:jobApplicationId"
-            element={<div>Detalle del candidato</div>}
-          />
+          <Route path="/procesos" element={<div>Vista de pipeline</div>} />
         </Routes>
       </MemoryRouter>
     </GebAuthContext.Provider>,
   );
 }
 
-function notificacion(
-  id: string,
-  overrides: Partial<{
-    tipo: 'INFORME_SELECTA_LISTO' | 'INFORME_ANONIMIZACION_LISTO';
-    leida: boolean;
-    mensaje: string;
-  }> = {},
-) {
+function notificacion(id: string, overrides: Partial<Notificacion> = {}): Notificacion {
   return {
     id,
+    jobRequisitionId: 'REQ-1',
     jobApplicationId: `ja_${id}`,
-    tipo: overrides.tipo ?? 'INFORME_SELECTA_LISTO',
-    mensaje: overrides.mensaje ?? `Notificación ${id}`,
+    tipo: 'INFORME_SELECTA_LISTO',
+    mensaje: `Notificación ${id}`,
     creadaEn: '2026-09-12T14:30:00Z',
-    leida: overrides.leida ?? false,
+    leida: false,
+    ...overrides,
   };
 }
 
@@ -76,7 +69,7 @@ beforeEach(() => {
 });
 
 describe('PaginaNotificaciones · Reclutador', () => {
-  it('clic en INFORME_ANONIMIZACION_LISTO marca como leída y navega al detalle del candidato', async () => {
+  it('clic en INFORME_ANONIMIZACION_LISTO marca como leída y navega a la vista de pipeline en el paso correspondiente', async () => {
     const usuario = userEvent.setup();
     cliente.get.mockResolvedValue([notificacion('1', { tipo: 'INFORME_ANONIMIZACION_LISTO' })]);
     cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
@@ -87,7 +80,9 @@ describe('PaginaNotificaciones · Reclutador', () => {
 
     await waitFor(() => expect(cliente.post).toHaveBeenCalledWith('/notificaciones/1/leida'));
     await waitFor(() =>
-      expect(screen.getByTestId('ubicacion')).toHaveTextContent('/procesos/candidato/ja_1'),
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&paso=ANONIMIZACION&candidato=ja_1',
+      ),
     );
   });
 
@@ -101,8 +96,22 @@ describe('PaginaNotificaciones · Reclutador', () => {
 
     expect(cliente.post).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(screen.getByTestId('ubicacion')).toHaveTextContent('/procesos/candidato/ja_1'),
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&paso=SELECTA&candidato=ja_1',
+      ),
     );
+  });
+
+  it('clic en una notificación MATRIZ_* marca como leída pero no navega', async () => {
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'MATRIZ_ENVIADA_AL_LIDER' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_RECLUTADOR]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() => expect(cliente.post).toHaveBeenCalledWith('/notificaciones/1/leida'));
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/notificaciones');
   });
 
   it('cambiar el filtro a "No leídas" reconsulta al servidor con leida=false', async () => {
@@ -151,9 +160,37 @@ describe('PaginaNotificaciones · Reclutador', () => {
 });
 
 describe('PaginaNotificaciones · Líder', () => {
-  it('clic en cualquier ítem marca como leída pero nunca navega', async () => {
+  it('clic en INFORME_ANONIMIZACION_LISTO marca como leída y navega a la vista de pipeline sin paso', async () => {
     const usuario = userEvent.setup();
     cliente.get.mockResolvedValue([notificacion('1', { tipo: 'INFORME_ANONIMIZACION_LISTO' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_LIDER]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() => expect(cliente.post).toHaveBeenCalledWith('/notificaciones/1/leida'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&candidato=ja_1',
+      ),
+    );
+  });
+
+  it('clic en INFORME_SELECTA_LISTO marca como leída pero nunca navega', async () => {
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'INFORME_SELECTA_LISTO' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_LIDER]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() => expect(cliente.post).toHaveBeenCalledWith('/notificaciones/1/leida'));
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/notificaciones');
+  });
+
+  it('clic en una notificación MATRIZ_* marca como leída pero nunca navega', async () => {
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'MATRIZ_REVISADA_POR_EL_LIDER' })]);
     cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
 
     renderPagina([ROL_LIDER]);

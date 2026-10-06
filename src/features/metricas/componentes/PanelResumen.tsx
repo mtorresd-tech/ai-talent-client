@@ -30,7 +30,7 @@ export function PanelResumen({ datos, cargando, error, onReintentar }: PanelResu
         gap: 2,
       }}
     >
-      <GebStatCard etiqueta="Requisiciones publicadas" valor={datos?.totalRequisiciones ?? 0} />
+      <GebStatCard etiqueta="Requisiciones gestionadas" valor={datos?.totalRequisiciones ?? 0} />
       <GebStatCard etiqueta="Candidatos activos" valor={datos?.candidatosActivos ?? 0} />
       <GebStatCard etiqueta="Tasa de cierre" valor={datos ? `${datos.tasaCierre}%` : '0%'} />
     </Box>

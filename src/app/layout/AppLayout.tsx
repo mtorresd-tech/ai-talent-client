@@ -1,7 +1,7 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
-import { GebAppLayout, type GebNavItem } from '@geb/ui';
+import { GebAppLayout, GebNotificationsMenu, type GebNavItem } from '@geb/ui';
 import { useAuth } from '@geb/auth';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
@@ -9,41 +9,50 @@ import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
 import { CATALOGO_ROLES_IA_TALENTO } from '../../shared/auth/catalogoRoles';
 import { useClienteApi } from '../../shared/api/clienteApi';
-import { useContadorNoLeidas } from '../../features/notificaciones/hooks/useContadorNoLeidas';
-
-/**
- * Navegación real de ambos portales: Reclutador ve Procesos/Métricas/
- * Notificaciones; Líder ve Procesos/Notificaciones. "Procesos" es una sola
- * entrada compartida — la pantalla que renderiza depende del rol (ver
- * features/procesos/paginas/PaginaProcesos.tsx).
- */
-const navegacion: GebNavItem[] = [
-  {
-    etiqueta: 'Procesos',
-    ruta: '/procesos',
-    roles: [ROL_RECLUTADOR, ROL_LIDER],
-    icono: <AssignmentOutlinedIcon />,
-  },
-  {
-    etiqueta: 'Métricas',
-    ruta: '/metricas',
-    roles: [ROL_RECLUTADOR],
-    icono: <BarChartOutlinedIcon />,
-  },
-  {
-    etiqueta: 'Notificaciones',
-    ruta: '/notificaciones',
-    roles: [ROL_RECLUTADOR, ROL_LIDER],
-    icono: <NotificationsOutlinedIcon />,
-  },
-];
+import { formatearFechaHora } from '../../shared/logica/formatoFecha';
+import { useNotificacionesNavbar } from '../../features/notificaciones/hooks/useNotificacionesNavbar';
+import { useAbrirNotificacion } from '../../features/notificaciones/hooks/useAbrirNotificacion';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario, logout } = useAuth();
   const clienteApi = useClienteApi();
-  const contador = useContadorNoLeidas(clienteApi);
+  const esReclutador = usuario?.roles.includes(ROL_RECLUTADOR) ?? false;
+
+  const notificacionesNavbar = useNotificacionesNavbar(clienteApi);
+  const { abrir } = useAbrirNotificacion(clienteApi, esReclutador);
+
+  // Navegación real de ambos portales: Reclutador ve Procesos/Métricas/
+  // Notificaciones; Líder ve Procesos/Notificaciones. "Procesos" es una sola
+  // entrada compartida — la pantalla que renderiza depende del rol (ver
+  // features/procesos/paginas/PaginaProcesos.tsx). El contador de
+  // "Notificaciones" es el mismo `totalNoLeidas` que alimenta el badge de la
+  // campana, para no mostrar dos números distintos del mismo dato.
+  const navegacion: GebNavItem[] = useMemo(
+    () => [
+      {
+        etiqueta: 'Procesos',
+        ruta: '/procesos',
+        roles: [ROL_RECLUTADOR, ROL_LIDER],
+        icono: <AssignmentOutlinedIcon />,
+      },
+      {
+        etiqueta: 'Métricas',
+        ruta: '/metricas',
+        roles: [ROL_RECLUTADOR],
+        icono: <BarChartOutlinedIcon />,
+      },
+      {
+        etiqueta: 'Notificaciones',
+        ruta: '/notificaciones',
+        roles: [ROL_RECLUTADOR, ROL_LIDER],
+        icono: <NotificationsOutlinedIcon />,
+        badge: notificacionesNavbar.totalNoLeidas,
+      },
+    ],
+    [notificacionesNavbar.totalNoLeidas],
+  );
 
   // El sidebar resalta la entrada cuya `ruta` coincide con `rutaActual`; las
   // subpáginas (p. ej. `/procesos/candidato/:id`) se normalizan a su sección
@@ -51,23 +60,33 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const rutaActual = location.pathname.startsWith('/procesos') ? '/procesos' : location.pathname;
 
   // `AppLayout` y `PaginaNotificaciones` son hermanos en el árbol: refrescar
-  // el contador en cada cambio de ruta cubre el caso real de uso (el usuario
-  // marca notificaciones como leídas y navega a otra sección) sin necesidad
-  // de levantar estado compartido entre ambos. Se omite la primera ejecución
-  // (montaje) porque `useContadorNoLeidas` ya consulta una vez por su cuenta.
+  // el contador y el panel en cada cambio de ruta cubre el caso real de uso
+  // (el usuario marca notificaciones como leídas y navega a otra sección) sin
+  // necesidad de levantar estado compartido entre ambos. Se omite la primera
+  // ejecución (montaje) porque `useNotificacionesNavbar` ya consulta una vez
+  // por su cuenta.
   const montado = useRef(false);
   useEffect(() => {
     if (!montado.current) {
       montado.current = true;
       return;
     }
-    contador.recargar();
+    notificacionesNavbar.recargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  const alAbrirNotificacion = useCallback(
+    (id: string) => {
+      const notificacion = notificacionesNavbar.notificaciones.find((item) => item.id === id);
+      if (!notificacion) return;
+      void abrir(notificacion).then(() => notificacionesNavbar.recargar());
+    },
+    [notificacionesNavbar, abrir],
+  );
+
   return (
     <GebAppLayout
-      tituloApp="IA Talento"
+      tituloApp="Selecta 2.0"
       mostrarTituloApp={false}
       logo={
         <Box
@@ -104,8 +123,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
       onLogout={() => void logout()}
       rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
-      onNotificaciones={() => navigate('/notificaciones')}
-      notificacionesSinLeer={contador.cantidad}
+      accionesHeader={
+        <GebNotificationsMenu
+          notificaciones={notificacionesNavbar.notificaciones.map((notificacion) => ({
+            id: notificacion.id,
+            titulo: notificacion.mensaje,
+            fecha: formatearFechaHora(notificacion.creadaEn),
+            leida: notificacion.leida,
+          }))}
+          totalNoLeidas={notificacionesNavbar.totalNoLeidas}
+          onAbrirNotificacion={alAbrirNotificacion}
+          onVerTodas={() => navigate('/notificaciones')}
+        />
+      }
     >
       {/* @geb/ui está buildeado contra @types/react 18; el `as any` evita el
           choque de identidad de tipos con la 19 de este repo — son dos

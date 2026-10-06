@@ -128,7 +128,7 @@ describe('AppRouter — estados de sesión', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Tu cuenta no tiene acceso a IA Talento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tu cuenta no tiene acceso a Selecta 2.0')).not.toBeInTheDocument();
   });
 
   it('con estado "autenticado" y rol LIDER_VACANTE monta AppLayout con la vista de líder', async () => {
@@ -140,13 +140,13 @@ describe('AppRouter — estados de sesión', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Informe Incógnito' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Tu cuenta no tiene acceso a IA Talento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tu cuenta no tiene acceso a Selecta 2.0')).not.toBeInTheDocument();
   });
 
   it('con estado "autenticado" y sin RECLUTADOR ni LIDER_VACANTE renderiza PaginaSinAcceso', () => {
     renderAppRouter('autenticado', []);
 
-    expect(screen.getByText('Tu cuenta no tiene acceso a IA Talento')).toBeInTheDocument();
+    expect(screen.getByText('Tu cuenta no tiene acceso a Selecta 2.0')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
@@ -159,7 +159,7 @@ describe('AppRouter — estados de sesión', () => {
   it('con rol RECLUTADOR válido pero sesionSinRol=true renderiza PaginaSinAcceso', () => {
     renderAppRouter('autenticado', [ROL_RECLUTADOR], true);
 
-    expect(screen.getByText('Tu cuenta no tiene acceso a IA Talento')).toBeInTheDocument();
+    expect(screen.getByText('Tu cuenta no tiene acceso a Selecta 2.0')).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
     ).not.toBeInTheDocument();
@@ -174,6 +174,6 @@ describe('AppRouter — estados de sesión', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Tu cuenta no tiene acceso a IA Talento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tu cuenta no tiene acceso a Selecta 2.0')).not.toBeInTheDocument();
   });
 });

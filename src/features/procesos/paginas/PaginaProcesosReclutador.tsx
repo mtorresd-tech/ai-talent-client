@@ -121,6 +121,33 @@ export function PaginaProcesosReclutador() {
     setSearchParams(siguiente, { replace: true });
   }, [vacanteId, pasoClaveManual, candidatoId, setSearchParams]);
 
+  // Resincronización inversa: si la página ya está montada y llega un
+  // `navigate()` con otros query params (p. ej. desde una notificación de la
+  // bandeja o de la campana), el estado interno se ajusta durante el propio
+  // render en vez de en un efecto — mismo patrón que `ModalInformeIncognito`
+  // usa para resetear estado derivado de una prop. El efecto anterior ya deja
+  // la URL en el mismo valor, así que no hay bucle entre ambos.
+  const [searchParamsSincronizados, setSearchParamsSincronizados] = useState(() =>
+    searchParams.toString(),
+  );
+  if (searchParams.toString() !== searchParamsSincronizados) {
+    setSearchParamsSincronizados(searchParams.toString());
+    const vacanteParam = searchParams.get('vacante') || null;
+    const pasoParam = searchParams.get('paso') || null;
+    const candidatoParam = searchParams.get('candidato') || null;
+    if (
+      vacanteParam !== vacanteId ||
+      pasoParam !== pasoClaveManual ||
+      candidatoParam !== candidatoId
+    ) {
+      setVacanteId(vacanteParam);
+      setPasoClaveManual(pasoParam);
+      setCandidatoId(candidatoParam);
+      setPaginaCandidatos(0);
+      seleccion.limpiar();
+    }
+  }
+
   const irADetalleCandidato = useCallback(
     (jobApplicationId: string) => {
       const params = new URLSearchParams();

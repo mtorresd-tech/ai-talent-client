@@ -7,9 +7,6 @@ export interface Prefiltro {
   cumplePerfil: boolean | null;
   interesContinuidad: boolean | null;
   desempenoUltimoAnio: string | null;
-  /** Monto en pesos colombianos. */
-  aspiracionSalarial: number | null;
-  disponibilidad: string | null;
   tiempoVinculacion: string | null;
   sancionadoUltimoAnio: boolean | null;
   promovidoUltimoAnio: boolean | null;
@@ -23,8 +20,6 @@ export interface PrefiltroRequest {
   cumplePerfil: boolean;
   interesContinuidad: boolean;
   desempenoUltimoAnio?: string;
-  aspiracionSalarial?: number;
-  disponibilidad?: string;
   tiempoVinculacion?: string;
   sancionadoUltimoAnio?: boolean;
   promovidoUltimoAnio?: boolean;

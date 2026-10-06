@@ -32,7 +32,7 @@ export interface ModalConfirmarPrefiltroProps {
 
 /**
  * Modal de confirmación del prefiltro telefónico. Solo confirma la acción: el
- * diligenciamiento real (cumple perfil, interés, aspiración salarial, …) se
+ * diligenciamiento real (cumple perfil, interés, tiempo de vinculación, …) se
  * hace luego en SAP SuccessFactors. Cada candidato seleccionado pasa de "En
  * ranking" a "Prefiltro pendiente".
  */

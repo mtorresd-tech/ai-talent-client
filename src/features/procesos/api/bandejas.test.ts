@@ -4,9 +4,9 @@ import type { DesgloseAfinidad } from './candidatos';
 
 /**
  * El tipo `InformeIncognito` quedó alineado al contrato: `estudios` y
- * `desgloseAfinidad` presentes, `experiencia`/`estudios` como objetos abiertos
- * y los campos con `default: []` opcionales. `DesgloseAfinidad` se importa de
- * `api/candidatos.ts`, no se redefine.
+ * `desgloseAfinidad` presentes, `experiencia`/`estudios` tipados según el
+ * contrato y los campos con `default: []` opcionales. `DesgloseAfinidad` se
+ * importa de `api/candidatos.ts`, no se redefine.
  */
 describe('InformeIncognito (tipo alineado al contrato)', () => {
   it('acepta el informe completo del endpoint de lista', () => {
@@ -30,8 +30,22 @@ describe('InformeIncognito (tipo alineado al contrato)', () => {
       generadoEn: '2026-08-14T00:00:00Z',
       aniosExperienciaTotal: 6.9,
       nivelAcademicoMaximo: 'Especialización',
-      experiencia: [{ cargo: 'Analista', empresa: 'GEB' }],
-      estudios: [{ titulo: 'Ingeniería' }],
+      experiencia: [
+        {
+          cargo: 'Analista',
+          compania: 'Grupo Energía Bogotá',
+          funciones: 'Soporte a datos',
+          fechaInicio: '2022-01-01',
+          fechaFin: null,
+        },
+      ],
+      estudios: [
+        {
+          nivelAcademico: 'Titulado',
+          nombreEstudio: 'Ingeniero de Sistemas',
+          institucion: 'Universidad Nacional',
+        },
+      ],
       competencias: ['SQL', 'Python'],
       desgloseAfinidad: desglose,
     };

@@ -2,9 +2,13 @@ import type { GebApiClient } from '@geb/api-client';
 
 export interface Notificacion {
   id: string;
-  /** Único identificador disponible para navegar (no trae `jobRequisitionId`). */
+  jobRequisitionId: string;
   jobApplicationId: string;
-  tipo: 'INFORME_SELECTA_LISTO' | 'INFORME_ANONIMIZACION_LISTO';
+  tipo:
+    | 'INFORME_SELECTA_LISTO'
+    | 'INFORME_ANONIMIZACION_LISTO'
+    | 'MATRIZ_ENVIADA_AL_LIDER'
+    | 'MATRIZ_REVISADA_POR_EL_LIDER';
   mensaje: string;
   /** ISO date-time. */
   creadaEn: string;

@@ -16,12 +16,6 @@ export interface InformacionPrefiltroProps {
   conBorde?: boolean;
 }
 
-const formateadorCop = new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  maximumFractionDigits: 0,
-});
-
 function textoBooleano(valor: boolean | null): string | null {
   if (valor === null) return null;
   return valor ? 'Sí' : 'No';
@@ -71,15 +65,6 @@ export function InformacionPrefiltro({
         Información del prefiltro
       </Typography>
       <Stack spacing={1.25} sx={{ mt: 1.5 }}>
-        <Fila
-          etiqueta="Aspiración salarial"
-          valor={
-            prefiltro.aspiracionSalarial === null
-              ? null
-              : formateadorCop.format(prefiltro.aspiracionSalarial)
-          }
-        />
-        <Fila etiqueta="Disponibilidad" valor={prefiltro.disponibilidad} />
         <Fila etiqueta="Desempeño del último año" valor={prefiltro.desempenoUltimoAnio} />
         <Fila etiqueta="Interés en continuar" valor={textoBooleano(prefiltro.interesContinuidad)} />
         <Fila etiqueta="Cumple el perfil" valor={textoBooleano(prefiltro.cumplePerfil)} />

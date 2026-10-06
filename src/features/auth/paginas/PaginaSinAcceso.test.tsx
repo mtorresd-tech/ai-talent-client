@@ -38,7 +38,7 @@ describe('PaginaSinAcceso', () => {
   it('muestra el mensaje de sin rol asignado y el botón "Cerrar sesión"', () => {
     renderPagina();
 
-    expect(screen.getByText('Tu cuenta no tiene acceso a IA Talento')).toBeInTheDocument();
+    expect(screen.getByText('Tu cuenta no tiene acceso a Selecta 2.0')).toBeInTheDocument();
     expect(screen.getByText(/No tienes un rol asignado en la aplicación/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
   });

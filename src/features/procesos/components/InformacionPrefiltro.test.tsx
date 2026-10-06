@@ -8,8 +8,6 @@ const prefiltro: Prefiltro = {
   cumplePerfil: true,
   interesContinuidad: false,
   desempenoUltimoAnio: 'Sobresaliente',
-  aspiracionSalarial: 5500000,
-  disponibilidad: 'Inmediata',
   tiempoVinculacion: 'Menos de 1 año',
   sancionadoUltimoAnio: false,
   promovidoUltimoAnio: true,
@@ -30,12 +28,12 @@ describe('InformacionPrefiltro', () => {
     expect(screen.getByText('Sin prefiltro')).toBeInTheDocument();
   });
 
-  it('con datos formatea la aspiración salarial en pesos colombianos', () => {
+  it('con datos pinta las filas con dato real, sin aspiración salarial ni disponibilidad', () => {
     render(<InformacionPrefiltro prefiltro={prefiltro} />);
 
-    expect(screen.getByText(/5\.500\.000/)).toBeInTheDocument();
-    expect(screen.getByText('Inmediata')).toBeInTheDocument();
     expect(screen.getByText('Cumple el perfil')).toBeInTheDocument();
+    expect(screen.queryByText('Aspiración salarial')).not.toBeInTheDocument();
+    expect(screen.queryByText('Disponibilidad')).not.toBeInTheDocument();
   });
 
   it('con el payload real de APP-00040 muestra los 3 campos nuevos con sus valores', () => {

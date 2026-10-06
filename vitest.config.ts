@@ -30,12 +30,18 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
+    // Default de Vitest (5000ms) alcanza a fallar por contención de CPU en
+    // corridas con paralelismo de archivos en esta máquina, no por un test
+    // lento de verdad — se sube para absorber esa variabilidad.
+    testTimeout: 20000,
+    hookTimeout: 20000,
     // `v8` reporta 0% aquí: el `%20` literal en la ruta del proyecto rompe su
     // emparejamiento de archivos. `istanbul` no depende de esa ruta.
     coverage: {
       provider: 'istanbul',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx'],
+      reporter: ['text', 'html'],
     },
   },
 });

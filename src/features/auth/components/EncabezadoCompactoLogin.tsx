@@ -10,7 +10,7 @@ export function EncabezadoCompactoLogin() {
       sx={{ display: { xs: 'flex', md: 'none' }, mb: 3, alignItems: 'center' }}
     >
       <GebLogo src="/logo_geb.png" width={105} height={50} fondoClaro alt="GEB" />
-      <Typography variant="h6">IA Talento</Typography>
+      <Typography variant="h6">Selecta 2.0</Typography>
     </Stack>
   );
 }

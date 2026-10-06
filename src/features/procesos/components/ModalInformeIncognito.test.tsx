@@ -30,19 +30,157 @@ const base = {
 };
 
 describe('ModalInformeIncognito', () => {
-  it('muestra el contador de experiencias sin intentar desglosar sus campos', () => {
-    render(<ModalInformeIncognito {...base} informe={informe({ experiencia: [{}, {}, {}] })} />);
-
-    expect(screen.getByText('3 experiencias registradas')).toBeInTheDocument();
-  });
-
-  it('no renderiza las secciones de experiencia ni estudios cuando llegan vacías', () => {
+  it('con estudios y experiencia vacíos muestra el estado vacío de cada sección nueva', () => {
     render(
       <ModalInformeIncognito {...base} informe={informe({ experiencia: [], estudios: [] })} />,
     );
 
-    expect(screen.queryByText(/experiencia[s]? registrada/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/estudio[s]? registrado/)).not.toBeInTheDocument();
+    expect(screen.getByText('Sin estudios registrados')).toBeInTheDocument();
+    expect(screen.getByText('Sin experiencia registrada')).toBeInTheDocument();
+  });
+
+  it('pinta la lista completa de experiencia con cargo, compañía y rango de fechas (cargo actual)', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          experiencia: [
+            {
+              cargo: 'Analista de datos',
+              compania: 'Grupo Energía Bogotá',
+              funciones: 'Construcción de reportes',
+              fechaInicio: '2022-01-01',
+              fechaFin: null,
+            },
+            {
+              cargo: 'Practicante',
+              compania: null,
+              funciones: null,
+              fechaInicio: null,
+              fechaFin: null,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Analista de datos')).toBeInTheDocument();
+    expect(screen.getByText('Grupo Energía Bogotá')).toBeInTheDocument();
+    expect(screen.getByText('Construcción de reportes')).toBeInTheDocument();
+    expect(screen.getAllByText(/Actualidad/).length).toBeGreaterThan(0);
+
+    expect(screen.getByText('Practicante')).toBeInTheDocument();
+  });
+
+  it('pinta el rango de fechas con fechaFin poblado (cargo ya finalizado)', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          experiencia: [
+            {
+              cargo: 'Analista de datos',
+              compania: 'Grupo Energía Bogotá',
+              funciones: null,
+              fechaInicio: '2020-03-01',
+              fechaFin: '2022-06-30',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.queryByText(/Actualidad/)).not.toBeInTheDocument();
+    expect(screen.getByText(/2020/)).toBeInTheDocument();
+  });
+
+  it('agrupa los estudios en Formación académica mostrando siempre el dato real completo', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          estudios: [
+            {
+              nivelAcademico: 'Titulado',
+              nombreEstudio: 'Ingeniero de Sistemas',
+              institucion: 'Universidad Nacional',
+            },
+            {
+              nivelAcademico: 'Especializacion',
+              nombreEstudio: 'Especializacion en gerencia de proyectos',
+              institucion: null,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const grupoPregrado = screen.getByText('Profesión / pregrado').closest('div') as HTMLElement;
+    expect(within(grupoPregrado).getByText('Ingeniero de Sistemas')).toBeInTheDocument();
+    expect(within(grupoPregrado).getByText('Titulado')).toBeInTheDocument();
+    expect(within(grupoPregrado).getByText('Universidad Nacional')).toBeInTheDocument();
+
+    const grupoPostgrado = screen.getByText('Postgrados').closest('div') as HTMLElement;
+    expect(
+      within(grupoPostgrado).getByText('Especializacion en gerencia de proyectos'),
+    ).toBeInTheDocument();
+    expect(within(grupoPostgrado).getByText('Especializacion')).toBeInTheDocument();
+  });
+
+  it('con nombreEstudio nulo usa "Formación académica" como título de respaldo', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          estudios: [{ nivelAcademico: 'Tecnico', nombreEstudio: null, institucion: null }],
+        })}
+      />,
+    );
+
+    const grupoPregrado = screen.getByText('Profesión / pregrado').closest('div') as HTMLElement;
+    expect(within(grupoPregrado).getByText('Formación académica')).toBeInTheDocument();
+    expect(within(grupoPregrado).getByText('Tecnico')).toBeInTheDocument();
+  });
+
+  it('muestra la fila Áreas con los valores únicos de competencias, sin depender de estudios[]', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          estudios: [
+            {
+              nivelAcademico: 'Titulado',
+              nombreEstudio: 'Ingeniero de Sistemas',
+              institucion: null,
+            },
+          ],
+          competencias: ['SQL', 'Python'],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Áreas')).toBeInTheDocument();
+    expect(screen.getByText('SQL, Python')).toBeInTheDocument();
+  });
+
+  it('sin competencias, la fila Áreas no se muestra', () => {
+    render(
+      <ModalInformeIncognito
+        {...base}
+        informe={informe({
+          estudios: [
+            {
+              nivelAcademico: 'Titulado',
+              nombreEstudio: 'Ingeniero de Sistemas',
+              institucion: null,
+            },
+          ],
+          competencias: [],
+        })}
+      />,
+    );
+
+    expect(screen.queryByText('Áreas')).not.toBeInTheDocument();
   });
 
   it('no renderiza la sección de competencias cuando el arreglo está vacío', () => {
