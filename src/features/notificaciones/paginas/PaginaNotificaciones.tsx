@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
-import { useAuth } from '@geb/auth';
 import { EncabezadoPagina } from '../../../shared/components/EncabezadoPagina';
 import { useClienteApi } from '../../../shared/api/clienteApi';
-import { ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
+import { usePortalActivo } from '../../../shared/auth/PortalActivoContext';
 import { useNotificaciones } from '../hooks/useNotificaciones';
 import { useAbrirNotificacion } from '../hooks/useAbrirNotificacion';
 import type { Notificacion } from '../api/notificaciones';
@@ -24,8 +23,8 @@ function leidaDelFiltro(filtro: ValorFiltroLeidas): boolean | undefined {
  */
 export function PaginaNotificaciones() {
   const clienteApi = useClienteApi();
-  const { usuario } = useAuth();
-  const esReclutador = usuario?.roles.includes(ROL_RECLUTADOR) ?? false;
+  const { portalActivo } = usePortalActivo();
+  const esReclutador = portalActivo === 'RECLUTADOR';
 
   const [filtro, setFiltro] = useState<ValorFiltroLeidas>('todas');
   const [avisoError, setAvisoError] = useState<string | null>(null);
