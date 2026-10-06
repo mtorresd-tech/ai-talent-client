@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { GebAuthContext, type GebAuthContextValue } from '@geb/auth';
 import { crearClienteApiFalso, type ClienteApiFalso } from '../../test/clienteApiFalso';
 import { renderConTema } from '../../test/renderConTema';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { PortalActivoProvider } from '../../shared/auth/PortalActivoContext';
 import type { Notificacion } from '../../features/notificaciones/api/notificaciones';
 import { AppLayout } from './AppLayout';
 
@@ -14,6 +15,10 @@ const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | nu
 vi.mock('../../shared/api/clienteApi', () => ({
   useClienteApi: () => contenedorMock.cliente,
 }));
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 const auth: GebAuthContextValue = {
   estado: 'autenticado',
@@ -51,28 +56,33 @@ function MostrarUbicacion() {
 function renderAppLayout(rutaInicial = '/procesos') {
   return renderConTema(
     <GebAuthContext.Provider value={auth}>
-      <MemoryRouter initialEntries={[rutaInicial]}>
-        <AppLayout>
-          <div>Contenido</div>
-        </AppLayout>
-        <MostrarUbicacion />
-      </MemoryRouter>
+      <PortalActivoProvider>
+        <MemoryRouter initialEntries={[rutaInicial]}>
+          <AppLayout>
+            <div>Contenido</div>
+          </AppLayout>
+          <MostrarUbicacion />
+        </MemoryRouter>
+      </PortalActivoProvider>
     </GebAuthContext.Provider>,
   );
 }
 
-function renderAppLayoutConRoles(roles: string[]) {
+function renderAppLayoutConRoles(roles: string[], rutaInicial = '/procesos') {
   const authConRoles: GebAuthContextValue = {
     ...auth,
     usuario: { ...auth.usuario!, roles },
   };
   return renderConTema(
     <GebAuthContext.Provider value={authConRoles}>
-      <MemoryRouter initialEntries={['/procesos']}>
-        <AppLayout>
-          <div>Contenido</div>
-        </AppLayout>
-      </MemoryRouter>
+      <PortalActivoProvider>
+        <MemoryRouter initialEntries={[rutaInicial]}>
+          <AppLayout>
+            <div>Contenido</div>
+          </AppLayout>
+          <MostrarUbicacion />
+        </MemoryRouter>
+      </PortalActivoProvider>
     </GebAuthContext.Provider>,
   );
 }
@@ -242,5 +252,71 @@ describe('AppLayout', () => {
     renderAppLayoutConRoles([ROL_LIDER]);
 
     expect(screen.getByText('Líder de área')).toBeInTheDocument();
+  });
+
+  describe('cambio de portal (usuario con ambos roles)', () => {
+    it('con un solo rol, el menú de usuario no ofrece "Cambiar de rol"', async () => {
+      const usuario = userEvent.setup();
+      contenedorMock.cliente = crearClienteApiFalso();
+      renderAppLayoutConRoles([ROL_RECLUTADOR]);
+
+      await usuario.click(screen.getByLabelText('Menú de usuario'));
+
+      expect(screen.queryByText('Cambiar de rol')).not.toBeInTheDocument();
+    });
+
+    it('con ambos roles, "Cambiar de rol" abre el diálogo con las dos opciones de portal', async () => {
+      const usuario = userEvent.setup();
+      contenedorMock.cliente = crearClienteApiFalso();
+      renderAppLayoutConRoles([ROL_RECLUTADOR, ROL_LIDER]);
+
+      await usuario.click(screen.getByLabelText('Menú de usuario'));
+      await usuario.click(screen.getByText('Cambiar de rol'));
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText('Portal Reclutador')).toBeInTheDocument();
+      expect(screen.getByText('Portal Líder')).toBeInTheDocument();
+    });
+
+    it('con portal Líder activo, "Métricas" no aparece en la navegación', async () => {
+      const usuario = userEvent.setup();
+      contenedorMock.cliente = crearClienteApiFalso();
+      renderAppLayoutConRoles([ROL_RECLUTADOR, ROL_LIDER]);
+
+      await usuario.click(screen.getByLabelText('Menú de usuario'));
+      await usuario.click(screen.getByText('Cambiar de rol'));
+      await usuario.click(screen.getByText('Portal Líder'));
+      await usuario.click(screen.getByRole('button', { name: 'Cambiar' }));
+
+      expect(screen.queryByRole('link', { name: /Métricas/ })).not.toBeInTheDocument();
+      // La etiqueta de rol del menú de usuario también sigue al portal activo, no a `roles[0]`.
+      expect(screen.getByText('Líder de área')).toBeInTheDocument();
+    });
+
+    it('al confirmar un cambio de portal estando en /metricas, navega a /procesos', async () => {
+      const usuario = userEvent.setup();
+      contenedorMock.cliente = crearClienteApiFalso();
+      renderAppLayoutConRoles([ROL_RECLUTADOR, ROL_LIDER], '/metricas');
+
+      await usuario.click(screen.getByLabelText('Menú de usuario'));
+      await usuario.click(screen.getByText('Cambiar de rol'));
+      await usuario.click(screen.getByText('Portal Líder'));
+      await usuario.click(screen.getByRole('button', { name: 'Cambiar' }));
+
+      await waitFor(() => expect(screen.getByTestId('ubicacion')).toHaveTextContent('/procesos'));
+    });
+
+    it('cancelar el diálogo no cambia el portal activo', async () => {
+      const usuario = userEvent.setup();
+      contenedorMock.cliente = crearClienteApiFalso();
+      renderAppLayoutConRoles([ROL_RECLUTADOR, ROL_LIDER]);
+
+      await usuario.click(screen.getByLabelText('Menú de usuario'));
+      await usuario.click(screen.getByText('Cambiar de rol'));
+      await usuario.click(screen.getByText('Portal Líder'));
+      await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      expect(screen.getByText('Reclutador')).toBeInTheDocument();
+    });
   });
 });
