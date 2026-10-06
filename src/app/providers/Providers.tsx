@@ -3,6 +3,7 @@ import { GebThemeProvider } from '@geb/ui';
 import { GebAuthProvider, type GebAuthConfig } from '@geb/auth';
 import { DevAuthProvider } from '../../shared/auth/DevAuthProvider';
 import { SesionApiProvider } from '../../shared/auth/SesionApiProvider';
+import { PortalActivoProvider } from '../../shared/auth/PortalActivoContext';
 import { CATALOGO_ROLES_IA_TALENTO } from '../../shared/auth/catalogoRoles';
 import { PantallaCargaSesion } from '../../features/auth';
 
@@ -46,10 +47,12 @@ export function Providers({ children }: { children: ReactNode }) {
                 `ReactNode` estructuralmente distintos para TS, no un error real
                 de tipos. */}
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {children as any}
+            {(<PortalActivoProvider>{children}</PortalActivoProvider>) as any}
           </GebAuthProvider>
         ) : (
-          <DevAuthProvider>{children}</DevAuthProvider>
+          <DevAuthProvider>
+            <PortalActivoProvider>{children}</PortalActivoProvider>
+          </DevAuthProvider>
         )}
       </SesionApiProvider>
     </GebThemeProvider>
