@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { GebAppLayout, GebNotificationsMenu, type GebNavItem } from '@geb/ui';
@@ -6,19 +6,30 @@ import { useAuth } from '@geb/auth';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
-import { ROL_LIDER, ROL_RECLUTADOR } from '../../shared/tipos/dominio';
+import { ROL_LIDER, ROL_RECLUTADOR, type Portal } from '../../shared/tipos/dominio';
 import { CATALOGO_ROLES_IA_TALENTO } from '../../shared/auth/catalogoRoles';
+import { usePortalActivo } from '../../shared/auth/PortalActivoContext';
 import { useClienteApi } from '../../shared/api/clienteApi';
 import { formatearFechaHora } from '../../shared/logica/formatoFecha';
 import { useNotificacionesNavbar } from '../../features/notificaciones/hooks/useNotificacionesNavbar';
 import { useAbrirNotificacion } from '../../features/notificaciones/hooks/useAbrirNotificacion';
+import { DialogCambiarPortal } from './DialogCambiarPortal';
+
+/** Rol real de `@geb/auth` (catálogo de roles) asociado a cada portal, para resolver la etiqueta del menú de usuario. */
+const ROL_DEL_PORTAL: Record<Portal, string> = {
+  RECLUTADOR: ROL_RECLUTADOR,
+  LIDER: ROL_LIDER,
+};
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { usuario, logout } = useAuth();
   const clienteApi = useClienteApi();
-  const esReclutador = usuario?.roles.includes(ROL_RECLUTADOR) ?? false;
+  const { portalActivo, tieneAmbosRoles, cambiarPortal } = usePortalActivo();
+  const esReclutador = portalActivo === 'RECLUTADOR';
+
+  const [dialogoPortalAbierto, setDialogoPortalAbierto] = useState(false);
 
   const notificacionesNavbar = useNotificacionesNavbar(clienteApi);
   const { abrir } = useAbrirNotificacion(clienteApi, esReclutador);
@@ -37,12 +48,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
         roles: [ROL_RECLUTADOR, ROL_LIDER],
         icono: <AssignmentOutlinedIcon />,
       },
-      {
-        etiqueta: 'Métricas',
-        ruta: '/metricas',
-        roles: [ROL_RECLUTADOR],
-        icono: <BarChartOutlinedIcon />,
-      },
+      // "Métricas" solo se ve con el portal Reclutador activo — el acceso
+      // real por rol sigue gobernado por `RequireRole` en `router.tsx`, esto
+      // es únicamente visibilidad de sidebar.
+      ...(portalActivo === 'RECLUTADOR'
+        ? [
+            {
+              etiqueta: 'Métricas',
+              ruta: '/metricas',
+              roles: [ROL_RECLUTADOR],
+              icono: <BarChartOutlinedIcon />,
+            },
+          ]
+        : []),
       {
         etiqueta: 'Notificaciones',
         ruta: '/notificaciones',
@@ -51,7 +69,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         badge: notificacionesNavbar.totalNoLeidas,
       },
     ],
-    [notificacionesNavbar.totalNoLeidas],
+    [notificacionesNavbar.totalNoLeidas, portalActivo],
   );
 
   // El sidebar resalta la entrada cuya `ruta` coincide con `rutaActual`; las
@@ -84,7 +102,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
     [notificacionesNavbar, abrir],
   );
 
-  return (
+  // "Métricas" es la única ruta exclusiva de un portal hoy: si el usuario
+  // cambia de portal estando ahí, se redirige a "Procesos" de inmediato, sin
+  // diálogo de confirmación adicional.
+  const alConfirmarCambioPortal = useCallback(
+    (portal: Portal) => {
+      cambiarPortal(portal);
+      if (location.pathname === '/metricas') {
+        navigate('/procesos');
+      }
+    },
+    [cambiarPortal, location.pathname, navigate],
+  );
+
+  const contenido = (
     <GebAppLayout
       tituloApp="Selecta 2.0"
       mostrarTituloApp={false}
@@ -113,14 +144,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
           ? {
               nombre: usuario.nombre,
               tenant: usuario.tenant,
-              rol: usuario.roles[0]
-                ? CATALOGO_ROLES_IA_TALENTO.etiqueta(usuario.roles[0])
-                : undefined,
+              rol: CATALOGO_ROLES_IA_TALENTO.etiqueta(ROL_DEL_PORTAL[portalActivo]),
               roles: usuario.roles,
             }
           : undefined
       }
       onLogout={() => void logout()}
+      onCambiarRol={tieneAmbosRoles ? () => setDialogoPortalAbierto(true) : undefined}
       rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
       accionesHeader={
@@ -144,5 +174,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {children as any}
     </GebAppLayout>
+  );
+
+  return (
+    <>
+      {contenido}
+      {tieneAmbosRoles && (
+        <DialogCambiarPortal
+          abierto={dialogoPortalAbierto}
+          portalActivo={portalActivo}
+          onSeleccionar={alConfirmarCambioPortal}
+          onCerrar={() => setDialogoPortalAbierto(false)}
+        />
+      )}
+    </>
   );
 }
