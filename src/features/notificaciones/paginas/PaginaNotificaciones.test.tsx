@@ -10,6 +10,7 @@ import {
 } from '../../../test/clienteApiFalso';
 import { renderConTema } from '../../../test/renderConTema';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
+import { PortalActivoProvider } from '../../../shared/auth/PortalActivoContext';
 import type { Notificacion } from '../api/notificaciones';
 import { PaginaNotificaciones } from './PaginaNotificaciones';
 
@@ -39,13 +40,15 @@ function MostrarUbicacion() {
 function renderPagina(roles: string[]) {
   return renderConTema(
     <GebAuthContext.Provider value={auth(roles)}>
-      <MemoryRouter initialEntries={['/notificaciones']}>
-        <MostrarUbicacion />
-        <Routes>
-          <Route path="/notificaciones" element={<PaginaNotificaciones />} />
-          <Route path="/procesos" element={<div>Vista de pipeline</div>} />
-        </Routes>
-      </MemoryRouter>
+      <PortalActivoProvider>
+        <MemoryRouter initialEntries={['/notificaciones']}>
+          <MostrarUbicacion />
+          <Routes>
+            <Route path="/notificaciones" element={<PaginaNotificaciones />} />
+            <Route path="/procesos" element={<div>Vista de pipeline</div>} />
+          </Routes>
+        </MemoryRouter>
+      </PortalActivoProvider>
     </GebAuthContext.Provider>,
   );
 }
@@ -66,6 +69,7 @@ function notificacion(id: string, overrides: Partial<Notificacion> = {}): Notifi
 beforeEach(() => {
   cliente = crearClienteApiFalso();
   contenedorMock.cliente = cliente;
+  sessionStorage.clear();
 });
 
 describe('PaginaNotificaciones · Reclutador', () => {
@@ -198,5 +202,38 @@ describe('PaginaNotificaciones · Líder', () => {
 
     await waitFor(() => expect(cliente.post).toHaveBeenCalledWith('/notificaciones/1/leida'));
     expect(screen.getByTestId('ubicacion')).toHaveTextContent('/notificaciones');
+  });
+});
+
+describe('PaginaNotificaciones · usuario con ambos roles', () => {
+  it('sigue el portal activo guardado (Líder), no el primer rol real (Reclutador)', async () => {
+    sessionStorage.setItem('selecta:portal-activo', 'LIDER');
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'INFORME_ANONIMIZACION_LISTO' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_RECLUTADOR, ROL_LIDER]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&candidato=ja_1',
+      ),
+    );
+  });
+
+  it('sin preferencia guardada, el default (portal Reclutador) agrega "paso=ANONIMIZACION" a la ruta', async () => {
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'INFORME_ANONIMIZACION_LISTO' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_RECLUTADOR, ROL_LIDER]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&paso=ANONIMIZACION&candidato=ja_1',
+      ),
+    );
   });
 });

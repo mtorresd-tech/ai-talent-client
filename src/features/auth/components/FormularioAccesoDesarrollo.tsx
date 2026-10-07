@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { Alert, Box, Button, FormLabel, Stack, Switch, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  FormLabel,
+  Stack,
+  TextField,
+} from '@mui/material';
 import { useDevAuth } from '../../../shared/auth/DevAuthContext';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../../../shared/tipos/dominio';
 
@@ -8,15 +17,16 @@ export function FormularioAccesoDesarrollo() {
   const devAuth = useDevAuth();
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
-  // Login de desarrollo: se elige con qué rol entrar (uno solo, no varios a la
-  // vez — con ambos, el dispatch de "Procesos" siempre abría la pantalla del
-  // líder y nunca la del reclutador).
-  const [rol, setRol] = useState<string>(ROL_RECLUTADOR);
-  const esLider = rol === ROL_LIDER;
+  const [esReclutador, setEsReclutador] = useState(true);
+  const [esLider, setEsLider] = useState(false);
 
   if (!devAuth) {
     return null;
   }
+
+  const roles = [esReclutador && ROL_RECLUTADOR, esLider && ROL_LIDER].filter(
+    (rol): rol is string => Boolean(rol),
+  );
 
   return (
     <Stack spacing={2} sx={{ width: '100%', maxWidth: 400 }}>
@@ -36,36 +46,36 @@ export function FormularioAccesoDesarrollo() {
         onChange={(e) => setClave(e.target.value)}
       />
       <Stack spacing={0.5}>
-        <FormLabel>Rol</FormLabel>
+        <FormLabel>Roles</FormLabel>
         <Box
           sx={{
             border: '1px solid',
             borderColor: 'rgba(0, 0, 0, 0.23)',
             borderRadius: 1,
             px: 1.5,
-            py: 1,
+            py: 0.5,
           }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <Typography sx={{ fontWeight: esLider ? 400 : 700 }}>Reclutador</Typography>
-            <Switch
-              checked={esLider}
-              onChange={(e) => setRol(e.target.checked ? ROL_LIDER : ROL_RECLUTADOR)}
-              slotProps={{ input: { 'aria-label': 'Cambiar entre Reclutador y Líder de área' } }}
-            />
-            <Typography sx={{ fontWeight: esLider ? 700 : 400 }}>Líder de área</Typography>
-          </Stack>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={esReclutador}
+                onChange={(e) => setEsReclutador(e.target.checked)}
+              />
+            }
+            label="Reclutador"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={esLider} onChange={(e) => setEsLider(e.target.checked)} />}
+            label="Líder de área"
+          />
         </Box>
       </Stack>
       <Button
         variant="contained"
         size="large"
-        disabled={!correo}
-        onClick={() => devAuth.iniciarSesion(correo, [rol])}
+        disabled={!correo || roles.length === 0}
+        onClick={() => devAuth.iniciarSesion(correo, roles)}
       >
         Iniciar sesión
       </Button>

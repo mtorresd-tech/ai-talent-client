@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { GebAuthContext, RequireRole, type GebAuthContextValue } from '@geb/auth';
@@ -7,6 +7,8 @@ import { crearClienteApiFalso, type ClienteApiFalso } from '../test/clienteApiFa
 import { renderConTema } from '../test/renderConTema';
 import { ROL_LIDER, ROL_RECLUTADOR } from '../shared/tipos/dominio';
 import { SesionApiContext, type SesionApiContextValue } from '../shared/auth/SesionApiContext';
+import { PortalActivoProvider } from '../shared/auth/PortalActivoContext';
+import { guardarRutaDestino } from '../shared/auth/rutaDestinoLogin';
 import { AppRouter } from './router';
 
 function sesionApi(sesionSinRol = false): SesionApiContextValue {
@@ -18,6 +20,10 @@ const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | nu
 vi.mock('../shared/api/clienteApi', () => ({
   useClienteApi: () => contenedorMock.cliente,
 }));
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 /**
  * La subpágina de detalle del candidato se monta en `router.tsx` envuelta en
@@ -90,13 +96,16 @@ function renderAppRouter(
   estado: GebAuthContextValue['estado'],
   roles: string[] = [],
   sesionSinRol = false,
+  rutaInicial = '/procesos',
 ): void {
   renderConTema(
     <SesionApiContext.Provider value={sesionApi(sesionSinRol)}>
       <GebAuthContext.Provider value={authConEstado(estado, roles)}>
-        <MemoryRouter initialEntries={['/procesos']}>
-          <AppRouter />
-        </MemoryRouter>
+        <PortalActivoProvider>
+          <MemoryRouter initialEntries={[rutaInicial]}>
+            <AppRouter />
+          </MemoryRouter>
+        </PortalActivoProvider>
       </GebAuthContext.Provider>
     </SesionApiContext.Provider>,
   );
@@ -175,5 +184,30 @@ describe('AppRouter — estados de sesión', () => {
       await screen.findByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('Tu cuenta no tiene acceso a Selecta 2.0')).not.toBeInTheDocument();
+  });
+});
+
+describe('AppRouter — restauración de ruta tras login (deep link)', () => {
+  it('con una ruta guardada antes del login, navega ahí tras pasar a autenticado', async () => {
+    guardarRutaDestino('/notificaciones');
+    contenedorMock.cliente = crearClienteApiFalso();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    renderAppRouter('autenticado', [ROL_RECLUTADOR], false, '/');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Notificaciones' }),
+    ).toBeInTheDocument();
+  });
+
+  it('sin ninguna ruta guardada, queda en el redirect por defecto a /procesos', async () => {
+    contenedorMock.cliente = crearClienteApiFalso();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    renderAppRouter('autenticado', [ROL_RECLUTADOR], false, '/');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Procesos de selección activos' }),
+    ).toBeInTheDocument();
   });
 });

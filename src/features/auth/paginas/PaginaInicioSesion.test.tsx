@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { GebAuthContext, type GebAuthContextValue, type EstadoSesion } from '@geb/auth';
 import { DevAuthContext, type DevAuthContextValue } from '../../../shared/auth/DevAuthContext';
 import { PaginaInicioSesion } from './PaginaInicioSesion';
+
+const CLAVE_RUTA_DESTINO = 'selecta:ruta-destino-login';
 
 function auth(estado: EstadoSesion, login = vi.fn()): GebAuthContextValue {
   return {
@@ -16,20 +19,34 @@ function auth(estado: EstadoSesion, login = vi.fn()): GebAuthContextValue {
   };
 }
 
+/** Expone la ruta actual del router, para verificar navegaciones disparadas desde dentro de la página. */
+function MostrarUbicacion() {
+  const ubicacion = useLocation();
+  return <div data-testid="ubicacion">{`${ubicacion.pathname}${ubicacion.search}`}</div>;
+}
+
 function renderPagina(
   estado: EstadoSesion,
   devAuth: DevAuthContextValue | null,
   login = vi.fn(),
+  rutaInicial = '/',
 ): void {
   const contenido: ReactNode = (
     <GebAuthContext.Provider value={auth(estado, login)}>
       <DevAuthContext.Provider value={devAuth}>
-        <PaginaInicioSesion />
+        <MemoryRouter initialEntries={[rutaInicial]}>
+          <PaginaInicioSesion />
+          <MostrarUbicacion />
+        </MemoryRouter>
       </DevAuthContext.Provider>
     </GebAuthContext.Provider>
   );
   render(contenido);
 }
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
 
 describe('PaginaInicioSesion — modo real', () => {
   it('renderiza título, subtítulo, botón de Entra ID y pie de contacto en estado no-autenticado', () => {
@@ -74,6 +91,36 @@ describe('PaginaInicioSesion — modo real', () => {
 
     expect(login).toHaveBeenCalledTimes(1);
   });
+
+  it('si el login se dispara ya desde "/", no guarda ninguna ruta destino ni navega', async () => {
+    const login = vi.fn();
+    const usuario = userEvent.setup();
+    renderPagina('no-autenticado', null, login, '/');
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Iniciar sesión con Microsoft Entra ID' }),
+    );
+
+    expect(sessionStorage.getItem(CLAVE_RUTA_DESTINO)).toBeNull();
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/');
+    expect(login).toHaveBeenCalledTimes(1);
+  });
+
+  it('si el login se dispara desde una ruta profunda, la guarda y navega a "/" antes de llamar login()', async () => {
+    const login = vi.fn();
+    const usuario = userEvent.setup();
+    renderPagina('no-autenticado', null, login, '/procesos/candidato/123?vacante=REQ-1');
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Iniciar sesión con Microsoft Entra ID' }),
+    );
+
+    expect(sessionStorage.getItem(CLAVE_RUTA_DESTINO)).toBe(
+      '/procesos/candidato/123?vacante=REQ-1',
+    );
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/');
+    expect(login).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('PaginaInicioSesion — modo desarrollo', () => {
@@ -81,31 +128,52 @@ describe('PaginaInicioSesion — modo desarrollo', () => {
     return { iniciarSesion };
   }
 
-  it('renderiza el formulario de correo/contraseña, el switch de rol y el Alert de advertencia', () => {
+  it('renderiza el formulario de correo/contraseña, los checkboxes de rol y el Alert de advertencia', () => {
     renderPagina('no-autenticado', devAuth());
 
     expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
-    expect(screen.getByLabelText('Cambiar entre Reclutador y Líder de área')).toBeInTheDocument();
-    expect(screen.getByText('Reclutador')).toBeInTheDocument();
-    expect(screen.getByText('Líder de área')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Reclutador' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Líder de área' })).toBeInTheDocument();
     expect(
       screen.getByText(/Modo desarrollo: no hay app registration de Entra ID configurado/),
     ).toBeInTheDocument();
   });
 
-  it('cambia entre Reclutador y Líder de área con el switch, y arranca en Reclutador', async () => {
+  it('arranca con "Reclutador" marcado e inicia sesión solo con ese rol', async () => {
+    const usuario = userEvent.setup();
+    const iniciarSesion = vi.fn();
+    renderPagina('no-autenticado', devAuth(iniciarSesion));
+
+    expect(screen.getByRole('checkbox', { name: 'Reclutador' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Líder de área' })).not.toBeChecked();
+
+    await usuario.type(screen.getByLabelText('Correo electrónico'), 'ana@geb.com.co');
+    await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+
+    expect(iniciarSesion).toHaveBeenCalledWith('ana@geb.com.co', ['RECLUTADOR']);
+  });
+
+  it('permite marcar ambos checkboxes a la vez e inicia sesión con los dos roles', async () => {
     const usuario = userEvent.setup();
     const iniciarSesion = vi.fn();
     renderPagina('no-autenticado', devAuth(iniciarSesion));
 
     await usuario.type(screen.getByLabelText('Correo electrónico'), 'ana@geb.com.co');
+    await usuario.click(screen.getByRole('checkbox', { name: 'Líder de área' }));
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(iniciarSesion).toHaveBeenCalledWith('ana@geb.com.co', ['RECLUTADOR']);
 
-    await usuario.click(screen.getByLabelText('Cambiar entre Reclutador y Líder de área'));
-    await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(iniciarSesion).toHaveBeenCalledWith('ana@geb.com.co', ['LIDER_VACANTE']);
+    expect(iniciarSesion).toHaveBeenCalledWith('ana@geb.com.co', ['RECLUTADOR', 'LIDER_VACANTE']);
+  });
+
+  it('deshabilita "Iniciar sesión" si ningún checkbox de rol está marcado', async () => {
+    const usuario = userEvent.setup();
+    renderPagina('no-autenticado', devAuth());
+
+    await usuario.type(screen.getByLabelText('Correo electrónico'), 'ana@geb.com.co');
+    await usuario.click(screen.getByRole('checkbox', { name: 'Reclutador' }));
+
+    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeDisabled();
   });
 
   it('mantiene el botón "Iniciar sesión" deshabilitado con correo vacío', async () => {
@@ -151,7 +219,9 @@ describe('PaginaInicioSesion — integración', () => {
     const { rerender } = render(
       <GebAuthContext.Provider value={auth('no-autenticado')}>
         <DevAuthContext.Provider value={null}>
-          <PaginaInicioSesion />
+          <MemoryRouter>
+            <PaginaInicioSesion />
+          </MemoryRouter>
         </DevAuthContext.Provider>
       </GebAuthContext.Provider>,
     );
@@ -164,7 +234,9 @@ describe('PaginaInicioSesion — integración', () => {
     rerender(
       <GebAuthContext.Provider value={auth('no-autenticado')}>
         <DevAuthContext.Provider value={{ iniciarSesion: vi.fn() }}>
-          <PaginaInicioSesion />
+          <MemoryRouter>
+            <PaginaInicioSesion />
+          </MemoryRouter>
         </DevAuthContext.Provider>
       </GebAuthContext.Provider>,
     );
