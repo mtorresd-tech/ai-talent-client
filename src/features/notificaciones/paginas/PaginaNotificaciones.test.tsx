@@ -106,7 +106,22 @@ describe('PaginaNotificaciones · Reclutador', () => {
     );
   });
 
-  it('clic en una notificación MATRIZ_* marca como leída pero no navega', async () => {
+  it('clic en una notificación MATRIZ_REVISADA_POR_EL_LIDER navega al paso Matriz de selección', async () => {
+    const usuario = userEvent.setup();
+    cliente.get.mockResolvedValue([notificacion('1', { tipo: 'MATRIZ_REVISADA_POR_EL_LIDER' })]);
+    cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
+
+    renderPagina([ROL_RECLUTADOR]);
+    await usuario.click(await screen.findByText('Notificación 1'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+        '/procesos?vacante=REQ-1&paso=MATRIZ_SELECCION&candidato=ja_1',
+      ),
+    );
+  });
+
+  it('clic en una notificación MATRIZ_ENVIADA_AL_LIDER marca como leída pero no navega', async () => {
     const usuario = userEvent.setup();
     cliente.get.mockResolvedValue([notificacion('1', { tipo: 'MATRIZ_ENVIADA_AL_LIDER' })]);
     cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
@@ -192,7 +207,7 @@ describe('PaginaNotificaciones · Líder', () => {
     expect(screen.getByTestId('ubicacion')).toHaveTextContent('/notificaciones');
   });
 
-  it('clic en una notificación MATRIZ_* marca como leída pero nunca navega', async () => {
+  it('clic en una notificación MATRIZ_REVISADA_POR_EL_LIDER marca como leída pero nunca navega', async () => {
     const usuario = userEvent.setup();
     cliente.get.mockResolvedValue([notificacion('1', { tipo: 'MATRIZ_REVISADA_POR_EL_LIDER' })]);
     cliente.post.mockResolvedValue({ ...notificacion('1'), leida: true });
