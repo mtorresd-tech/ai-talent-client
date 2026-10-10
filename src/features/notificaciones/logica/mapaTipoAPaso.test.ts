@@ -10,8 +10,11 @@ describe('pasoPorTipoNotificacion', () => {
     expect(pasoPorTipoNotificacion('INFORME_ANONIMIZACION_LISTO')).toBe('ANONIMIZACION');
   });
 
-  it('MATRIZ_ENVIADA_AL_LIDER y MATRIZ_REVISADA_POR_EL_LIDER devuelven null', () => {
+  it('MATRIZ_REVISADA_POR_EL_LIDER devuelve el paso MATRIZ_SELECCION', () => {
+    expect(pasoPorTipoNotificacion('MATRIZ_REVISADA_POR_EL_LIDER')).toBe('MATRIZ_SELECCION');
+  });
+
+  it('MATRIZ_ENVIADA_AL_LIDER devuelve null', () => {
     expect(pasoPorTipoNotificacion('MATRIZ_ENVIADA_AL_LIDER')).toBeNull();
-    expect(pasoPorTipoNotificacion('MATRIZ_REVISADA_POR_EL_LIDER')).toBeNull();
   });
 });
