@@ -254,6 +254,44 @@ describe('AppLayout', () => {
     expect(screen.getByText('Líder de área')).toBeInTheDocument();
   });
 
+  it('al cerrar sesión elimina los borradores de justificación de la matriz antes de logout', async () => {
+    const usuario = userEvent.setup();
+    contenedorMock.cliente = crearClienteApiFalso();
+    const claveBorrador = 'selecta:borrador-justificacion-matriz:REQ-1:APP-1';
+    sessionStorage.setItem(
+      claveBorrador,
+      JSON.stringify({
+        fortalezas: 'Texto',
+        oportunidadesDesarrollo: '',
+        criterioDesempate: '',
+        equivalenciasAplicadas: '',
+        observaciones: '',
+      }),
+    );
+    let borradorAlCerrarSesion: string | null = 'sin llamar';
+    const logout = vi.fn(async () => {
+      borradorAlCerrarSesion = sessionStorage.getItem(claveBorrador);
+    });
+
+    renderConTema(
+      <GebAuthContext.Provider value={{ ...auth, logout }}>
+        <PortalActivoProvider>
+          <MemoryRouter initialEntries={['/procesos']}>
+            <AppLayout>
+              <div>Contenido</div>
+            </AppLayout>
+          </MemoryRouter>
+        </PortalActivoProvider>
+      </GebAuthContext.Provider>,
+    );
+
+    await usuario.click(screen.getByLabelText('Menú de usuario'));
+    await usuario.click(screen.getByText('Cerrar sesión'));
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(borradorAlCerrarSesion).toBeNull();
+  });
+
   describe('cambio de portal (usuario con ambos roles)', () => {
     it('con un solo rol, el menú de usuario no ofrece "Cambiar de rol"', async () => {
       const usuario = userEvent.setup();
