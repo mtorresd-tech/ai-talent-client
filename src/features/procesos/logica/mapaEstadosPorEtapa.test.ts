@@ -5,6 +5,7 @@ import {
   esPasoAnonimizacion,
   esPasoBluesite,
   esPasoCosinte,
+  esPasoMatriz,
   esPasoMedilaboral,
   esPasoOferta,
   esPasoSelecta,
@@ -84,6 +85,10 @@ describe('esEtapaOperativa', () => {
   it('OFERTA devuelve false a propósito: no tiene entrada en ESTADOS_POR_ETAPA (no lista candidatos)', () => {
     expect(esEtapaOperativa('OFERTA')).toBe(false);
   });
+
+  it('MATRIZ_SELECCION devuelve false a propósito: su lista no filtra por estado', () => {
+    expect(esEtapaOperativa('MATRIZ_SELECCION')).toBe(false);
+  });
 });
 
 describe('esPasoSelecta', () => {
@@ -140,6 +145,15 @@ describe('esPasoOferta', () => {
   });
 });
 
+describe('esPasoMatriz', () => {
+  it('solo es cierto para el paso de matriz de selección', () => {
+    expect(esPasoMatriz('MATRIZ_SELECCION')).toBe(true);
+    expect(esPasoMatriz('COSINTE')).toBe(false);
+    expect(esPasoMatriz('OFERTA')).toBe(false);
+    expect(esPasoMatriz(null)).toBe(false);
+  });
+});
+
 describe('tipoPanelPaso', () => {
   it('discrimina el panel derecho por tipo de paso', () => {
     expect(tipoPanelPaso('SELECTA')).toBe('SELECTA');
@@ -149,6 +163,7 @@ describe('tipoPanelPaso', () => {
     expect(tipoPanelPaso('COSINTE')).toBe('COSINTE');
     expect(tipoPanelPaso('MEDILABORAL')).toBe('MEDILABORAL');
     expect(tipoPanelPaso('OFERTA')).toBe('OFERTA');
+    expect(tipoPanelPaso('MATRIZ_SELECCION')).toBe('MATRIZ');
     expect(tipoPanelPaso(null)).toBeNull();
   });
 });
