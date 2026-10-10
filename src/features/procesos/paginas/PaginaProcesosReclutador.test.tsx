@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import {
@@ -10,7 +10,15 @@ import {
 } from '../../../test/clienteApiFalso';
 import { establecerAnchoViewport } from '../../../test/matchMedia';
 import { renderConTema } from '../../../test/renderConTema';
+import {
+  decisionMatriz,
+  filaMatriz,
+  matrizSeleccion,
+  objecionMatriz,
+  seleccionMatriz,
+} from '../../../test/fixturesMatriz';
 import { limpiarCacheCatalogoEstados } from '../hooks/useCatalogoEstados';
+import { LayoutPasoPipeline } from '../components/LayoutPasoPipeline';
 import { PaginaProcesosReclutador } from './PaginaProcesosReclutador';
 
 const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | null }));
@@ -18,6 +26,12 @@ const contenedorMock = vi.hoisted(() => ({ cliente: null as ClienteApiFalso | nu
 vi.mock('../../../shared/api/clienteApi', () => ({
   useClienteApi: () => contenedorMock.cliente,
 }));
+
+// Se envuelve sin cambiar su comportamiento, para saber si un paso lo usa.
+vi.mock('../components/LayoutPasoPipeline', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../components/LayoutPasoPipeline')>();
+  return { LayoutPasoPipeline: vi.fn(original.LayoutPasoPipeline) };
+});
 
 let cliente: ClienteApiFalso;
 
@@ -346,6 +360,17 @@ const integracionesMedilaboral = {
   meta: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
 };
 
+const matrizVacia = {
+  jobRequisitionId: 'REQ-1',
+  configuracion: { requierePruebaTecnica: false, entrevistasArea: 2 },
+  pesos: { competencias: 0.3, pruebaTecnica: 0, talentoHumano: 0.3, conceptoArea: 0.4 },
+  candidatos: [],
+  seleccion: null,
+  decisionLider: null,
+  plazoDecisionHasta: null,
+  objeciones: [],
+};
+
 const catalogoEstados = [
   {
     clave: 'EN_REVISION_LIDER',
@@ -386,6 +411,7 @@ beforeEach(() => {
       }
       if (url === '/vacantes/REQ-1') return Promise.resolve(detalleVacante);
       if (url === '/catalogos/estados-candidato') return Promise.resolve(catalogoEstados);
+      if (url === '/vacantes/REQ-1/matriz') return Promise.resolve(matrizVacia);
       if (url === '/vacantes/REQ-1/candidatos') {
         const estados = config?.params?.estado ?? [];
         if (estados.includes('PREFILTRO_PENDIENTE')) return Promise.resolve(listaFiltrados);
@@ -1109,6 +1135,332 @@ describe('PaginaProcesosReclutador · paso Medilaboral', () => {
     expect(await screen.findByText('Gustavo Peña')).toBeInTheDocument();
     expect(screen.getByText('Helena Cruz')).toBeInTheDocument();
     expect(screen.queryByText('Requiere atención')).not.toBeInTheDocument();
+  });
+});
+
+describe('PaginaProcesosReclutador · paso Matriz de selección', () => {
+  const ana = filaMatriz({
+    jobApplicationId: 'APP-1',
+    nombre: 'Ana Pérez',
+    resultado: { total: 85 },
+  });
+  const luis = filaMatriz({
+    jobApplicationId: 'APP-2',
+    nombre: 'Luis Gómez',
+    resultado: { total: 80 },
+  });
+  const matrizObjetada = matrizSeleccion({
+    candidatos: [ana, luis],
+    seleccion: seleccionMatriz({ jobApplicationId: 'APP-1', fortalezas: 'Fortalezas de Ana' }),
+    decisionLider: decisionMatriz({ motivo: 'No alcanza el concepto' }),
+    plazoDecisionHasta: '2026-11-12T15:00:00Z',
+  });
+
+  /** Responde la matriz indicada en `/vacantes/REQ-1/matriz` y delega el resto al mock base. */
+  function mockearMatriz(respuesta: unknown) {
+    const base = cliente.get.getMockImplementation();
+    cliente.get.mockImplementation((url: string, config?: unknown) => {
+      if (url === '/vacantes/REQ-1/matriz') return Promise.resolve(respuesta);
+      return base!(url, config);
+    });
+  }
+
+  function renderMatriz(candidato?: string, extra?: ReactElement) {
+    const ruta = `/procesos?vacante=REQ-1&paso=MATRIZ_SELECCION${candidato ? `&candidato=${candidato}` : ''}`;
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        {extra}
+      </>,
+      ruta,
+    );
+    return userEvent.setup();
+  }
+
+  // Estas pruebas encadenan varias peticiones y escritura de texto: con la
+  // suite completa en paralelo, la espera por defecto (1 s) de `findBy*` y
+  // `waitFor` se queda corta.
+  let esperaAnterior: number;
+  beforeAll(() => {
+    esperaAnterior = getConfig().asyncUtilTimeout;
+    configure({ asyncUtilTimeout: 5000 });
+  });
+  afterAll(() => configure({ asyncUtilTimeout: esperaAnterior }));
+
+  beforeEach(() => sessionStorage.clear());
+
+  it('solo pide GET .../matriz y muestra el estado vacío, sin banda ni placeholder', async () => {
+    renderMatriz();
+
+    expect(
+      (await screen.findAllByText('Todavía no hay puntajes para esta vacante')).length,
+    ).toBeGreaterThan(0);
+    expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-1/matriz', expect.anything());
+    expect(screen.queryByText('Configuración de la matriz')).not.toBeInTheDocument();
+    expect(screen.queryByText(/construcción/i)).not.toBeInTheDocument();
+    const urls = cliente.get.mock.calls.map((llamada) => llamada[0]);
+    expect(urls).not.toContain('/vacantes/REQ-1/candidatos');
+    expect(urls.some((url) => url.startsWith('/candidatos/'))).toBe(false);
+    expect(cliente.put).not.toHaveBeenCalled();
+  });
+
+  it('muestra la configuración en solo lectura y no hace ninguna petición PUT', async () => {
+    mockearMatriz(matrizSeleccion({ candidatos: [ana, luis] }));
+    const usuario = renderMatriz();
+
+    expect(await screen.findByText('Configuración de la matriz')).toBeInTheDocument();
+    expect(screen.getByText('Entrevista jefe 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /configuración/i })).not.toBeInTheDocument();
+
+    const tabla = screen.getByRole('table', { name: 'Matriz de selección' });
+    expect(screen.getByText('Elige un candidato de la matriz.')).toBeInTheDocument();
+    await usuario.click(within(tabla).getByRole('rowheader', { name: 'Luis Gómez' }));
+    expect(
+      await screen.findByRole('heading', { level: 3, name: 'Luis Gómez' }),
+    ).toBeInTheDocument();
+    expect(
+      within(tabla).getByRole('rowheader', { name: 'Luis Gómez' }).closest('tr'),
+    ).toHaveAttribute('aria-selected', 'true');
+
+    expect(cliente.put).not.toHaveBeenCalled();
+  });
+
+  it('sin candidato en la URL preselecciona al enviado; si fue objetado ofrece volver a enviarlo', async () => {
+    mockearMatriz(matrizObjetada);
+    const usuario = renderMatriz();
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Ana Pérez' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Objetado por el líder: No alcanza el concepto. Puedes volver a enviar este candidato o elegir otro.',
+    );
+    expect(screen.getByText('Objetado por el líder: No alcanza el concepto')).toBeInTheDocument();
+    expect(screen.queryByText('Fortalezas de Ana')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Volver a enviar este candidato' }),
+    ).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver justificación enviada' }));
+    expect(screen.getByText('Fortalezas de Ana')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Enviar al líder' })).not.toBeInTheDocument();
+  });
+
+  it('en una matriz objetada vuelve a enviar al mismo candidato con la justificación precargada', async () => {
+    mockearMatriz(matrizObjetada);
+    const usuario = renderMatriz('APP-1');
+
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Volver a enviar este candidato' }),
+    );
+    const fortalezas = screen.getByRole('textbox', { name: /^Fortalezas/ });
+    expect(fortalezas).toHaveValue('Fortalezas de Ana');
+    await usuario.type(fortalezas, ' tras la reunión');
+    await usuario.click(screen.getByRole('button', { name: 'Enviar al líder' }));
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(dialogo).not.toHaveTextContent(/reemplaza la elección/);
+
+    cliente.post.mockResolvedValueOnce(
+      matrizSeleccion({
+        candidatos: [ana, luis],
+        seleccion: seleccionMatriz({
+          jobApplicationId: 'APP-1',
+          fortalezas: 'Fortalezas de Ana tras la reunión',
+        }),
+        decisionLider: null,
+        plazoDecisionHasta: '2026-11-14T15:00:00Z',
+        objeciones: [objecionMatriz({ jobApplicationId: 'APP-1' })],
+      }),
+    );
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar envío' }));
+
+    await waitFor(() =>
+      expect(cliente.post).toHaveBeenCalledWith('/vacantes/REQ-1/matriz/seleccion', {
+        jobApplicationId: 'APP-1',
+        fortalezas: 'Fortalezas de Ana tras la reunión',
+        oportunidadesDesarrollo: null,
+        criterioDesempate: null,
+        equivalenciasAplicadas: null,
+        observaciones: null,
+      }),
+    );
+    expect(await screen.findByText('Matriz enviada al líder.')).toBeInTheDocument();
+    expect(screen.getByText(/Pendiente de respuesta del líder/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: /^Fortalezas/ })).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Volver a enviar este candidato' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('en una matriz objetada envía a otro candidato elegible y pasa a pendiente del líder', async () => {
+    mockearMatriz(matrizObjetada);
+    const usuario = renderMatriz('APP-2');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Seleccionar este candidato' }));
+    await usuario.type(screen.getByRole('textbox', { name: /^Fortalezas/ }), 'Ok');
+    await usuario.click(screen.getByRole('button', { name: 'Enviar al líder' }));
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(dialogo).toHaveTextContent('Este candidato reemplaza la elección que el líder objetó.');
+
+    cliente.post.mockResolvedValueOnce(
+      matrizSeleccion({
+        candidatos: [ana, luis],
+        seleccion: seleccionMatriz({ jobApplicationId: 'APP-2', puntajeFinal: 80 }),
+        decisionLider: null,
+        plazoDecisionHasta: '2026-11-14T15:00:00Z',
+        objeciones: [objecionMatriz({ jobApplicationId: 'APP-1' })],
+      }),
+    );
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar envío' }));
+
+    await waitFor(() =>
+      expect(cliente.post).toHaveBeenCalledWith('/vacantes/REQ-1/matriz/seleccion', {
+        jobApplicationId: 'APP-2',
+        fortalezas: 'Ok',
+        oportunidadesDesarrollo: null,
+        criterioDesempate: null,
+        equivalenciasAplicadas: null,
+        observaciones: null,
+      }),
+    );
+    expect(await screen.findByText('Matriz enviada al líder.')).toBeInTheDocument();
+    expect(screen.getByText(/Pendiente de respuesta del líder/)).toBeInTheDocument();
+    expect(screen.getByText(/fue el candidato seleccionado/)).toHaveTextContent(
+      'Luis Gómez fue el candidato seleccionado',
+    );
+    expect(screen.getByRole('img', { name: /^Objetado por el líder/ })).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: /Luis Gómez/ }).closest('tr')).toHaveAttribute(
+      'data-enviada',
+      'true',
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: /^Fortalezas/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('button', { name: 'Enviar al líder' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver justificación enviada' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('un 409 al enviar muestra el mensaje claro y recarga la matriz', async () => {
+    mockearMatriz(matrizSeleccion({ candidatos: [ana, luis] }));
+    const usuario = renderMatriz('APP-2');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Seleccionar este candidato' }));
+    await usuario.type(screen.getByRole('textbox', { name: /^Fortalezas/ }), 'Ok');
+    await usuario.click(screen.getByRole('button', { name: 'Enviar al líder' }));
+    const dialogo = await screen.findByRole('dialog');
+
+    const llamadasAntes = cliente.get.mock.calls.filter(
+      (llamada) => llamada[0] === '/vacantes/REQ-1/matriz',
+    ).length;
+    cliente.post.mockRejectedValueOnce(errorApi(409, 'Calificacion incompleta'));
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar envío' }));
+
+    expect(
+      await screen.findByText(/ya no tiene la calificación completa en la matriz/),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        cliente.get.mock.calls.filter((llamada) => llamada[0] === '/vacantes/REQ-1/matriz').length,
+      ).toBeGreaterThan(llamadasAntes),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('ya montada, la notificación MATRIZ_REVISADA_POR_EL_LIDER lleva al paso Matriz con el candidato y cierra el modal', async () => {
+    mockearMatriz(matrizObjetada);
+    const usuario = renderMatriz(
+      'APP-2',
+      <BotonNavegarA ruta="/procesos?vacante=REQ-1&paso=MATRIZ_SELECCION&candidato=APP-1" />,
+    );
+
+    await usuario.click(await screen.findByRole('button', { name: 'Seleccionar este candidato' }));
+    await usuario.type(screen.getByRole('textbox', { name: /^Fortalezas/ }), 'Ok');
+    await usuario.click(screen.getByRole('button', { name: 'Enviar al líder' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    // El clic real cae fuera del diálogo modal: se dispara la navegación directamente.
+    screen.getByRole('button', { name: 'Simular clic en notificación', hidden: true }).click();
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Ana Pérez' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.queryByRole('textbox', { name: /^Fortalezas/ })).not.toBeInTheDocument();
+    await usuario.click(screen.getByRole('button', { name: 'Ver justificación enviada' }));
+    expect(screen.getByText('Fortalezas de Ana')).toBeInTheDocument();
+  });
+
+  it('desde otro paso, la navegación de la notificación cambia a Matriz sin remontar', async () => {
+    mockearMatriz(matrizObjetada);
+    renderPagina(
+      <>
+        <PaginaProcesosReclutador />
+        <BotonNavegarA ruta="/procesos?vacante=REQ-1&paso=MATRIZ_SELECCION&candidato=APP-1" />
+        <MostrarUbicacion />
+      </>,
+      '/procesos?vacante=REQ-1&paso=SELECTA&candidato=APP-1',
+    );
+    await screen.findByText('73%');
+
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole('button', { name: 'Simular clic en notificación' }));
+
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(
+      '/procesos?vacante=REQ-1&paso=MATRIZ_SELECCION&candidato=APP-1',
+    );
+    expect(await screen.findByRole('heading', { level: 3, name: 'Ana Pérez' })).toBeInTheDocument();
+    expect(cliente.get).toHaveBeenCalledWith('/vacantes/REQ-1/matriz', expect.anything());
+    expect(screen.queryByText('73%')).not.toBeInTheDocument();
+  });
+
+  it('el paso Matriz no renderiza LayoutPasoPipeline ni una lista aparte: tabla y barra van apiladas', async () => {
+    vi.mocked(LayoutPasoPipeline).mockClear();
+    mockearMatriz(matrizObjetada);
+    renderMatriz('APP-2');
+
+    expect(
+      await screen.findByRole('heading', { level: 3, name: 'Luis Gómez' }),
+    ).toBeInTheDocument();
+    const tabla = screen.getByRole('table', { name: 'Matriz de selección' });
+    // La URL manda sobre la preselección del enviado.
+    expect(
+      within(tabla).getByRole('rowheader', { name: 'Luis Gómez' }).closest('tr'),
+    ).toHaveAttribute('aria-selected', 'true');
+    // Solo la tabla de vacantes y la matriz.
+    expect(screen.getAllByRole('table')).toHaveLength(2);
+    expect(LayoutPasoPipeline).not.toHaveBeenCalled();
+  });
+
+  it('en mobile muestra la misma pila, sin el patrón maestro–detalle ni "Volver a la lista"', async () => {
+    establecerAnchoViewport(400);
+    mockearMatriz(matrizObjetada);
+    const usuario = renderMatriz();
+
+    await usuario.click(await screen.findByRole('rowheader', { name: 'Luis Gómez' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 3, name: 'Luis Gómez' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('rowheader', { name: /Ana Pérez/ })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Matriz de selección' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Volver a la lista/ })).not.toBeInTheDocument();
+  });
+
+  it('el formulario no aparece hasta "Seleccionar este candidato" y "Cancelar" conserva el borrador', async () => {
+    mockearMatriz(matrizSeleccion({ candidatos: [ana, luis] }));
+    const usuario = renderMatriz('APP-2');
+
+    const seleccionar = await screen.findByRole('button', { name: 'Seleccionar este candidato' });
+    expect(screen.queryByRole('textbox', { name: /^Fortalezas/ })).not.toBeInTheDocument();
+
+    await usuario.click(seleccionar);
+    await usuario.type(screen.getByRole('textbox', { name: /^Fortalezas/ }), 'Liderazgo');
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await usuario.click(await screen.findByRole('button', { name: 'Continuar justificación' }));
+    expect(screen.getByRole('textbox', { name: /^Fortalezas/ })).toHaveValue('Liderazgo');
+    expect(screen.getByText('Borrador')).toBeInTheDocument();
   });
 });
 
