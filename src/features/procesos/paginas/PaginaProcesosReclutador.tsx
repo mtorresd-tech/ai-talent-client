@@ -17,8 +17,13 @@ import { usePrefiltroCandidato } from '../hooks/usePrefiltroCandidato';
 import { useCatalogoEstados } from '../hooks/useCatalogoEstados';
 import { useSeleccionMultiple } from '../hooks/useSeleccionMultiple';
 import { useEnviarPrefiltro } from '../hooks/useEnviarPrefiltro';
+import { useMatriz } from '../hooks/useMatriz';
+import { useSeleccionarCandidatoMatriz } from '../hooks/useSeleccionarCandidatoMatriz';
+import type { SeleccionMatrizRequest } from '../api/matriz';
+import { interpretarErrorSeleccion } from '../logica/erroresMatriz';
 import {
   esEtapaOperativa,
+  esPasoMatriz,
   esPasoOferta,
   panelTieneIntegracionProveedor,
   proveedorDePanel,
@@ -42,6 +47,7 @@ import { SeguimientoBluesite } from '../components/SeguimientoBluesite';
 import { SeguimientoCosinte } from '../components/SeguimientoCosinte';
 import { SeguimientoMedilaboral } from '../components/SeguimientoMedilaboral';
 import { SeguimientoOferta } from '../components/SeguimientoOferta';
+import { PanelMatrizSeleccion } from '../components/PanelMatrizSeleccion';
 import { PasoEnConstruccion } from '../components/PasoEnConstruccion';
 
 // `OFERTA` no tiene entrada aquí: no lista candidatos (un único recurso por
@@ -63,11 +69,14 @@ const TAMANO_PAGINA_INICIAL = 5;
  * vacante → rail del pipeline (fases SAP + pasos internos) → layout de dos
  * columnas con el paso de ranking operativo (lista de candidatos por afinidad +
  * resultado Selecta) y la acción de prefiltro telefónico. El listado de
- * filtrados, la anonimización, Bluesite, Cosinte y Medilaboral también son
- * operativos (estos cuatro últimos de solo consulta); los demás pasos son
- * navegables con un placeholder. El último paso, Oferta, también es operativo
- * pero no lista candidatos: muestra el candidato final de la vacante en un
- * panel único de ancho completo, sin el layout de dos columnas.
+ * filtrados, la anonimización, Bluesite, Cosinte, Medilaboral y la matriz de
+ * selección también son operativos (Bluesite/Cosinte/Medilaboral de solo
+ * consulta; la matriz permite consultar, justificar y enviar un candidato al
+ * líder); los demás pasos son navegables con un placeholder. El último paso,
+ * Oferta, también es operativo pero no lista candidatos: muestra el
+ * candidato final de la vacante en un panel único de ancho completo, sin el
+ * layout de dos columnas; la matriz de selección también ocupa todo el ancho,
+ * con su tabla y la justificación apiladas.
  * La selección (vacante → paso → candidato) vive en el componente
  * y se refleja en los query params `?vacante&paso&candidato`, de modo que la
  * subpágina de detalle del candidato puede reconstruir el listado al volver.
@@ -94,6 +103,11 @@ export function PaginaProcesosReclutador() {
     () => searchParams.get('candidato') || null,
   );
   const [modalAbierto, setModalAbierto] = useState(false);
+  // Justificación validada que espera confirmación; mientras exista, el modal de envío está abierto.
+  const [solicitudEnvioMatriz, setSolicitudEnvioMatriz] = useState<SeleccionMatrizRequest | null>(
+    null,
+  );
+  const [versionBorradoresMatriz, setVersionBorradoresMatriz] = useState(0);
 
   const vacantes = useVacantes(clienteApi, {
     pagina: paginaVacantes,
@@ -110,6 +124,24 @@ export function PaginaProcesosReclutador() {
   const envio = useEnviarPrefiltro(clienteApi);
 
   const pasoClave = pasoClaveManual ?? PASO_INICIAL;
+  // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
+  // (listado de filtrados), anonimización (seguimiento al líder), Bluesite
+  // (pruebas psicotécnicas), Cosinte (estudio de seguridad), Medilaboral
+  // (exámenes médicos) o Matriz de selección.
+  const panel = tipoPanelPaso(pasoClave);
+  const esSelecta = panel === 'SELECTA';
+  const esMatriz = panel === 'MATRIZ';
+
+  // Matriz de selección: una sola petición alimenta la tabla y la barra del candidato.
+  const matriz = useMatriz(clienteApi, esMatriz ? vacanteId : null);
+  const seleccionarMatrizHook = useSeleccionarCandidatoMatriz(clienteApi);
+  const { reiniciar: reiniciarEnvioMatriz } = seleccionarMatrizHook;
+
+  /** Cierra el modal de envío y descarta los mensajes de la matriz de la selección anterior. */
+  const reiniciarEstadoMatriz = useCallback(() => {
+    setSolicitudEnvioMatriz(null);
+    reiniciarEnvioMatriz();
+  }, [reiniciarEnvioMatriz]);
 
   // Mantiene la selección en la URL (sin apilar entradas de historial) para que
   // la subpágina de detalle pueda reconstruir el listado al volver.
@@ -145,6 +177,7 @@ export function PaginaProcesosReclutador() {
       setCandidatoId(candidatoParam);
       setPaginaCandidatos(0);
       seleccion.limpiar();
+      reiniciarEstadoMatriz();
     }
   }
 
@@ -164,7 +197,8 @@ export function PaginaProcesosReclutador() {
     pagina: paginaCandidatos,
     tamanoPagina: tamanoPaginaCandidatos,
   });
-  const detalleCandidato = useDetalleCandidato(clienteApi, candidatoId);
+  // La matriz trae todo lo que necesita su panel: no pide el detalle del candidato.
+  const detalleCandidato = useDetalleCandidato(clienteApi, esMatriz ? null : candidatoId);
 
   const seleccionarVacante = useCallback(
     (vacante: VacanteResumen) => {
@@ -173,8 +207,9 @@ export function PaginaProcesosReclutador() {
       setCandidatoId(null);
       setPaginaCandidatos(0);
       seleccion.limpiar();
+      reiniciarEstadoMatriz();
     },
-    [seleccion],
+    [seleccion, reiniciarEstadoMatriz],
   );
 
   const seleccionarPaso = useCallback(
@@ -183,8 +218,9 @@ export function PaginaProcesosReclutador() {
       setCandidatoId(null);
       setPaginaCandidatos(0);
       seleccion.limpiar();
+      reiniciarEstadoMatriz();
     },
-    [seleccion],
+    [seleccion, reiniciarEstadoMatriz],
   );
 
   const buscarVacantes = useCallback((texto: string) => {
@@ -202,16 +238,11 @@ export function PaginaProcesosReclutador() {
     setTamanoPaginaCandidatos(tamano);
   }, []);
 
-  // `esPasoOferta` compensa que `OFERTA` no tiene entrada en `ESTADOS_POR_ETAPA`
-  // (no lista candidatos, así que `esEtapaOperativa` por sí sola daría `false`).
-  const operativa = esEtapaOperativa(pasoClave) || esPasoOferta(pasoClave);
-  // Discrimina el panel derecho por tipo de paso: Selecta (afinidad), prefiltro
-  // (listado de filtrados), anonimización (seguimiento al líder), Bluesite
-  // (pruebas psicotécnicas), Cosinte (estudio de seguridad) o Medilaboral
-  // (exámenes médicos).
-  const panel = tipoPanelPaso(pasoClave);
-  const esSelecta = panel === 'SELECTA';
-
+  // `esPasoOferta`/`esPasoMatriz` compensan que ninguno de los dos tiene
+  // entrada en `ESTADOS_POR_ETAPA` (no listan candidatos por estado, así que
+  // `esEtapaOperativa` por sí sola daría `false`).
+  const operativa =
+    esEtapaOperativa(pasoClave) || esPasoOferta(pasoClave) || esPasoMatriz(pasoClave);
   const prefiltroCandidato = usePrefiltroCandidato(
     clienteApi,
     panel === 'PREFILTRO' ? candidatoId : null,
@@ -244,6 +275,57 @@ export function PaginaProcesosReclutador() {
   const seleccionados = useMemo(
     () => candidatosPagina.filter((c) => seleccion.seleccionados.has(c.jobApplicationId)),
     [candidatosPagina, seleccion.seleccionados],
+  );
+
+  const { seleccionar: seleccionarEnMatriz } = seleccionarMatrizHook;
+  const { reemplazar: reemplazarMatriz, recargar: recargarMatriz } = matriz;
+  // Sin candidato en la URL, la matriz abre con el candidato enviado al líder, si lo hay.
+  const candidatoActivoMatriz = candidatoId ?? matriz.datos?.seleccion?.jobApplicationId ?? null;
+
+  const seleccionarCandidatoMatriz = useCallback(
+    (jobApplicationId: string) => {
+      setCandidatoId(jobApplicationId);
+      reiniciarEstadoMatriz();
+    },
+    [reiniciarEstadoMatriz],
+  );
+
+  const solicitarEnvioMatriz = useCallback(
+    (datos: SeleccionMatrizRequest) => {
+      reiniciarEnvioMatriz();
+      setSolicitudEnvioMatriz(datos);
+    },
+    [reiniciarEnvioMatriz],
+  );
+
+  const cancelarEnvioMatriz = useCallback(() => {
+    setSolicitudEnvioMatriz(null);
+    reiniciarEnvioMatriz();
+  }, [reiniciarEnvioMatriz]);
+
+  const confirmarEnvioMatriz = useCallback(async () => {
+    if (!vacanteId || !solicitudEnvioMatriz) return;
+    const { matriz: actualizada, error } = await seleccionarEnMatriz(
+      vacanteId,
+      solicitudEnvioMatriz,
+    );
+    if (actualizada) {
+      reemplazarMatriz(actualizada);
+      setSolicitudEnvioMatriz(null);
+      setVersionBorradoresMatriz((version) => version + 1);
+      return;
+    }
+    // Los errores por datos desactualizados cierran el modal y resincronizan la
+    // matriz; los de red o servidor dejan el modal abierto para reintentar.
+    if (interpretarErrorSeleccion(error).recargar) {
+      setSolicitudEnvioMatriz(null);
+      recargarMatriz();
+    }
+  }, [vacanteId, solicitudEnvioMatriz, seleccionarEnMatriz, reemplazarMatriz, recargarMatriz]);
+
+  const refrescarBorradoresMatriz = useCallback(
+    () => setVersionBorradoresMatriz((version) => version + 1),
+    [],
   );
 
   const confirmarPrefiltro = useCallback(async () => {
@@ -368,6 +450,26 @@ export function PaginaProcesosReclutador() {
             onVerDetalleCompleto={onVerDetalleCompleto}
           />
         );
+      case 'MATRIZ':
+        return (
+          <PanelMatrizSeleccion
+            matriz={matriz.datos}
+            cargando={matriz.cargando}
+            error={matriz.error}
+            onReintentar={matriz.recargar}
+            candidatoActivoId={candidatoActivoMatriz}
+            onSeleccionarCandidato={seleccionarCandidatoMatriz}
+            versionBorradores={versionBorradoresMatriz}
+            solicitudEnvio={solicitudEnvioMatriz}
+            enviandoSeleccion={seleccionarMatrizHook.enviando}
+            errorSeleccion={seleccionarMatrizHook.error}
+            envioExitoso={seleccionarMatrizHook.resultado !== null}
+            onSolicitarEnvio={solicitarEnvioMatriz}
+            onCancelarEnvio={cancelarEnvioMatriz}
+            onConfirmarEnvio={() => void confirmarEnvioMatriz()}
+            onCambioBorrador={refrescarBorradoresMatriz}
+          />
+        );
       case 'OFERTA':
         return (
           <SeguimientoOferta
@@ -425,9 +527,10 @@ export function PaginaProcesosReclutador() {
             onReintentar={detalleVacante.recargar}
           />
           <RailPipeline pasoActivo={pasoClave} onSeleccionarPaso={seleccionarPaso} />
-          {panel === 'OFERTA' ? (
-            // Oferta no lista candidatos: panel único de ancho completo, sin
-            // el layout maestro-detalle de `LayoutPasoPipeline`.
+          {panel === 'OFERTA' || esMatriz ? (
+            // Oferta no lista candidatos y la matriz necesita todo el ancho para
+            // su tabla: panel único de ancho completo, sin el layout
+            // maestro-detalle de `LayoutPasoPipeline`.
             <Box sx={{ minWidth: 0 }}>{columnaDerecha()}</Box>
           ) : (
             <LayoutPasoPipeline
