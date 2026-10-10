@@ -34,6 +34,9 @@ export const CLAVE_ETAPA_MEDILABORAL = 'MEDILABORAL';
 /** Clave del paso de oferta y candidato final (solo consulta, sin lista). */
 export const CLAVE_ETAPA_OFERTA = 'OFERTA';
 
+/** Clave del paso de matriz de selección (consulta de la matriz, justificación y envío al líder). */
+export const CLAVE_ETAPA_MATRIZ = 'MATRIZ_SELECCION';
+
 /**
  * Traducción `clave de paso → estados`. Configurable y acotada a los pasos
  * operativos con **lista** de candidatos que filtrar por estado.
@@ -42,6 +45,10 @@ export const CLAVE_ETAPA_OFERTA = 'OFERTA';
  * único recurso por vacante (`GET /vacantes/{id}/candidato-final`) — no hay
  * nada que filtrar por `EstadoProceso`. Su criterio de "paso operativo" es
  * `esPasoOferta`, no una entrada en este mapa.
+ *
+ * `MATRIZ_SELECCION` tampoco tiene entrada: su lista de candidatos sale de la
+ * propia matriz (`GET /vacantes/{id}/matriz`), no de filtrar por
+ * `EstadoProceso`. Su criterio de "paso operativo" es `esPasoMatriz`.
  */
 export const ESTADOS_POR_ETAPA: Record<string, EstadoProceso[]> = {
   [CLAVE_ETAPA_RANKING]: ['RANKING_SELECTA'],
@@ -122,6 +129,11 @@ export function esPasoOferta(clave: string | null | undefined): boolean {
   return clave === CLAVE_ETAPA_OFERTA;
 }
 
+/** `true` solo para el paso de matriz de selección. */
+export function esPasoMatriz(clave: string | null | undefined): boolean {
+  return clave === CLAVE_ETAPA_MATRIZ;
+}
+
 /**
  * Tipo de panel derecho que corresponde montar para un paso operativo:
  *   - `SELECTA`: resultado de afinidad Selecta.
@@ -131,6 +143,7 @@ export function esPasoOferta(clave: string | null | undefined): boolean {
  *   - `COSINTE`: seguimiento del estudio de seguridad y su resultado.
  *   - `MEDILABORAL`: seguimiento de los exámenes médicos y su resultado.
  *   - `OFERTA`: detalle de solo consulta del candidato final de la vacante.
+ *   - `MATRIZ`: consulta de la matriz, justificación y envío al líder.
  *   - `null`: paso sin panel (no operativo).
  */
 export type TipoPanelPaso =
@@ -141,6 +154,7 @@ export type TipoPanelPaso =
   | 'COSINTE'
   | 'MEDILABORAL'
   | 'OFERTA'
+  | 'MATRIZ'
   | null;
 
 /** Discrimina qué panel derecho corresponde a un paso del pipeline. */
@@ -150,10 +164,11 @@ export function tipoPanelPaso(clave: string | null | undefined): TipoPanelPaso {
   if (esPasoBluesite(clave)) return 'BLUESITE';
   if (esPasoCosinte(clave)) return 'COSINTE';
   if (esPasoMedilaboral(clave)) return 'MEDILABORAL';
-  // `esPasoOferta` va antes del fallback de `esEtapaOperativa`: `OFERTA` no
-  // tiene entrada en `ESTADOS_POR_ETAPA` a propósito, así que sin este caso
-  // caería al `return null` genérico de un paso no operativo.
+  // `esPasoOferta`/`esPasoMatriz` van antes del fallback de `esEtapaOperativa`:
+  // ninguno de los dos tiene entrada en `ESTADOS_POR_ETAPA` a propósito, así
+  // que sin este caso caerían al `return null` genérico de un paso no operativo.
   if (esPasoOferta(clave)) return 'OFERTA';
+  if (esPasoMatriz(clave)) return 'MATRIZ';
   if (esEtapaOperativa(clave)) return 'PREFILTRO';
   return null;
 }
