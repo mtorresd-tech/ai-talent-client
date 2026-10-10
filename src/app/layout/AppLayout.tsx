@@ -13,6 +13,7 @@ import { useClienteApi } from '../../shared/api/clienteApi';
 import { formatearFechaHora } from '../../shared/logica/formatoFecha';
 import { useNotificacionesNavbar } from '../../features/notificaciones/hooks/useNotificacionesNavbar';
 import { useAbrirNotificacion } from '../../features/notificaciones/hooks/useAbrirNotificacion';
+import { limpiarBorradoresJustificacionMatriz } from '../../features/procesos/logica/borradorJustificacionMatriz';
 import { DialogCambiarPortal } from './DialogCambiarPortal';
 
 /** Rol real de `@geb/auth` (catálogo de roles) asociado a cada portal, para resolver la etiqueta del menú de usuario. */
@@ -149,7 +150,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
             }
           : undefined
       }
-      onLogout={() => void logout()}
+      onLogout={() => {
+        // Los borradores de justificación contienen texto evaluativo sobre
+        // candidatos: se eliminan antes de cerrar la sesión.
+        limpiarBorradoresJustificacionMatriz();
+        void logout();
+      }}
       onCambiarRol={tieneAmbosRoles ? () => setDialogoPortalAbierto(true) : undefined}
       rutaActual={rutaActual}
       onNavegar={(ruta) => navigate(ruta)}
